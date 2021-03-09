@@ -4,7 +4,6 @@
   * @author  周大侠
   * @version V1.0
   * @date    2020-8-15 14:58:34
-  * @brief   周大侠 常用库
   ******************************************************************************
   * @attention
 
@@ -24,7 +23,7 @@ volatile static Sys_Task Task_info_all;
   * @Arguments	：
 			    TaskName        任务名称，指向ASCII字符串的指针
 			    task            任务控制块指针
-			    start_routine   任务函数，通常是一个死循环
+			    start_routine   任务函数
 			    par             传递给任务函数的参数  
 			    period          任务调度周期
   * @Returns	：
