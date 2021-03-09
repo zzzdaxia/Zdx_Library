@@ -189,12 +189,12 @@ int Queue_add(ScmQueue_info *p_Queue,char* data,uint32_t len)
 	
     if(p_Queue->Queue_sum < QUEUE_AMOUNT_MAX && NULL != data && len <= QUEUE_DATA_LEN_MAX)
     {
-        point_to_end = p_Queue->Queue_new + p_Queue->Queue_sum;
-        point_to_end = (point_to_end >= QUEUE_AMOUNT_MAX) ? ( point_to_end -= QUEUE_AMOUNT_MAX) : (point_to_end);
-        
+		point_to_end = p_Queue->Queue_new + p_Queue->Queue_sum;
+		point_to_end = (point_to_end >= QUEUE_AMOUNT_MAX) ? ( point_to_end -= QUEUE_AMOUNT_MAX) : (point_to_end);
+
 		memcpy(&p_Queue->List[point_to_end].data[0],data,len);
 		p_Queue->List[point_to_end].len = len;
-        p_Queue->Queue_sum++;     
+		p_Queue->Queue_sum++;     
     }
     else
     {

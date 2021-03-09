@@ -11,7 +11,15 @@
 
 ## 1. TASK 任务调度：#define ZDX_TASK   ##
 
-无操作系统(裸机环境)下实现分时调度法，非常适用于单片机环境下一般应用的软件架构。
+无RTOS(裸机环境)下实现分时调度法，非常适用于单片机环境下的一般应用场景
+
+RTOS优点不用多说了，但对于一些简单的业务需求，移植一个操作系统又显得非常麻烦，且非常占用系统资源。
+
+通常的做法是在一个大while下执行各个业务函数，通过多个定时器去控制各个函数的执行周期，利用几个全局变量关联各个模块功能。
+
+但这样的做法在多轮开发下，会造成 代码非常臃肿，模块关系混乱，不利于阅读。
+
+为了解决这个问题，手动码了一个简单的多任务调度，封装成接口供大家使用！
 
 优点： 
 
@@ -26,14 +34,14 @@
 
 例：
     
-    void main(viod)
+    void main(void)
     {
     	Drive_init();//时钟、外设、IO 初始化
     	Time_init();//设定1mS中断一次的定时器
     
     	Task_create("test_task_1",Task_1_fun,null,5);//创建一个Task_1_fun 任务 5mS执行一次
     	Task_create("test_led",Led_fun,null,100);//创建一个Led_fun 任务 100mS执行一次
-    	Task_create("test_RTC",RTC_fun,null,1000);//RTC_fun 任务 1000mS执行一次
+    	Task_create("test_RTC",RTC_fun,null,1000);//创建RTC_fun 任务 1000mS执行一次
     
      	start_time();//启动定时器
     
@@ -53,6 +61,9 @@
 
 
 
+
+
+
 ## 2. QUEUE  队列管理：#define ZDX_QUEUE    ##
 
 使用方法：根据业务场景，修改宏定义QUEUE_DATA_LEN_MAX和QUEUE_AMOUNT_MAX ，创建静态或动态的队列缓存。
@@ -66,6 +77,7 @@
  Queue_del：出队
 
  Queue_get：读取队列头数据
+
 
 
 
