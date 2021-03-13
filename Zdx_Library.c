@@ -479,3 +479,50 @@ int releaseRingbuffer(ScmRingBuff* pRing)
 #endif
 
 
+#ifdef ZDX_MEMORY
+
+/********************************************************
+  * @Description：字节对齐 malloc
+  * @Arguments	：
+                required_bytes   要申请内存字节大小 (Byte)
+                alignment 字节对齐值 必须为2的n次方
+  * @Returns	：
+                0   申请失败
+                其它：得到的地址
+  * @author     : 周大侠     2021-3-13 11:28:07
+ *******************************************************/
+void* aligned_malloc(size_t         required_bytes, size_t alignment)
+{
+    void* res = nullptr;
+    size_t   offset = alignment - 1 + sizeof(void*);//需要增加调整空间和存放实际地址的空间
+    void* p = (void*)malloc(required_bytes+offset);// p 为实际malloc的地址
+    
+    if (nullptr != p)
+    {
+        res = (void*)(((size_t  )(p)+offset)&~(alignment-1));//a &~(b-1) 可以理解为b在a范围中的最大整数倍的值    ，b必须为2的n次方，如：100&~(8-1) = 96
+        void** tmp = (void**)res;//tmp是一个存放指针数据的地址
+        tmp[-1] = p;//地址的前一个位置存放指针p
+    }        
+     
+    return res;
+}
+ 
+/********************************************************
+  * @Description：字节对齐的 内存释放
+  * @Arguments	：
+                r 要释放的地址值
+  * @Returns	：
+  * @author     : 周大侠     2021-3-13 11:28:07
+ *******************************************************/
+void aligned_free(void* r)
+{
+    if (r != nullptr)
+    {
+        void** tmp = (void**)r;
+        free(tmp[-1]);
+    }
+ 
+}
+
+#endif
+

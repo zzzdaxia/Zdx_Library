@@ -34,6 +34,7 @@
 #define ZDX_TASK            //无操作系统下的分时调度
 #define ZDX_QUEUE           //队列管理
 #define ZDX_RING_REDIS      //环形缓存
+#define ZDX_MEMORY          //内存管理
 
 #define DEBUG_PRINT(...)                         //printf
 
@@ -168,10 +169,13 @@ int releaseRingbuffer(ScmRingBuff* pRing);
 
 
 
+#ifdef ZDX_MEMORY
+
+void* aligned_malloc(size_t         required_bytes, size_t alignment);
+void aligned_free(void* r);
 
 
-
-
+#endif
 
 
 

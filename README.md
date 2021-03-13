@@ -9,6 +9,8 @@
 
 3. RING_REDIS 环形缓存
 
+4. MEMORY 内存管理
+
 ## 1. TASK 任务调度：#define ZDX_TASK   ##
 
 无RTOS(裸机环境)下实现分时调度法，非常适用于单片机环境下的一般应用场景
@@ -95,3 +97,17 @@ RTOS优点不用多说了，但对于一些简单的业务需求，移植一个�
 
 
 ![](https://img-blog.csdn.net/20180823161009879?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L21hb3dlbnRhbzA0MTY=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)
+
+
+
+
+## 4. MEMORY  内存管理：#define ZDX_MEMORY    ##
+
+编写支持对其分配的malloc和free函数，分配内存时，malloc函数返回的地址必须能被2的n次方整除。
+
+
+void* aligned_malloc(size_t required_bytes, size_t alignment)    
+void aligned_free(void* r)
+
+内存模型：
+![](https://img-blog.csdnimg.cn/202103131542419.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM3ODMwNzU3,size_16,color_FFFFFF,t_70)
