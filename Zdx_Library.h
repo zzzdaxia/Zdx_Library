@@ -19,6 +19,21 @@
 #include    <string.h>
 
 
+//硬件版本号
+#define HARDWARE_VERSION    				"VER123T" 
+//软件版本号
+#define SOFTWARE_VERSION    				"20200815_ZDX"
+//阶段版本号
+#if (TEST_MODE ) || ( OPEN_WATCH_DOG)
+#define PHASE_VERSION       				"_Test";
+#else
+#define PHASE_VERSION       				"_Beta";
+#endif
+
+#define VERSION_NAME_MAX_SIZE				32U
+
+
+
 #define int32_t                             signed int      
 #define uint32_t                            unsigned int    
 #define int16_t                             signed short    
@@ -57,8 +72,6 @@
                                               (((uint32_t)(_32t_) & 0x00ff0000) >> 8) | \
                                               (((uint32_t)(_32t_) & 0x0000ff00) << 8) | \
                                               (((uint32_t)(_32t_) & 0x000000ff) << 24))
-
-
 
 
 

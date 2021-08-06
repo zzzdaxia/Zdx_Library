@@ -13,6 +13,11 @@
 
 
 
+//版本号  =  硬件版本号 + 软件版本号 + 阶段版本号  
+const char SysVersion[VERSION_NAME_MAX_SIZE] = HARDWARE_VERSION SOFTWARE_VERSION PHASE_VERSION;
+
+
+
 #ifdef ZDX_TASK
 
 volatile static Sys_Task Task_info_all;
