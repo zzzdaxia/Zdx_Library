@@ -33,13 +33,13 @@
 #define VERSION_NAME_MAX_SIZE				32U
 
 
-
-#define int32_t                             signed int      
-#define uint32_t                            unsigned int    
-#define int16_t                             signed short    
-#define uint16_t                            unsigned short  
-#define int8_t                              signed char     
-#define uint8_t                             unsigned char   
+typedef signed int                          int32_t;
+typedef unsigned int 		                uint32_t;
+typedef signed short 		                int16_t;
+typedef unsigned short 		                uint16_t;
+typedef signed char 		                int8_t;
+typedef unsigned char 		                uint8_t;
+ 
 
 #ifndef TRUE
 #define TRUE                                (1)
