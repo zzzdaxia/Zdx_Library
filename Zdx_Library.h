@@ -20,25 +20,25 @@
 
 
 //硬件版本号
-#define HARDWARE_VERSION    				"VER123T" 
+#define HARDWARE_VERSION                    "VER123T" 
 //软件版本号
-#define SOFTWARE_VERSION    				"20200815_ZDX"
+#define SOFTWARE_VERSION                    "20200815_ZDX"
 //阶段版本号
 #if (TEST_MODE ) || ( OPEN_WATCH_DOG)
-#define PHASE_VERSION       				"_Test";
+#define PHASE_VERSION                       "_Test";
 #else
-#define PHASE_VERSION       				"_Beta";
+#define PHASE_VERSION                       "_Beta";
 #endif
 
-#define VERSION_NAME_MAX_SIZE				32U
+#define VERSION_NAME_MAX_SIZE                32U
 
 
 typedef signed int                          int32_t;
-typedef unsigned int 		                uint32_t;
-typedef signed short 		                int16_t;
-typedef unsigned short 		                uint16_t;
-typedef signed char 		                int8_t;
-typedef unsigned char 		                uint8_t;
+typedef unsigned int                         uint32_t;
+typedef signed short                         int16_t;
+typedef unsigned short                         uint16_t;
+typedef signed char                         int8_t;
+typedef unsigned char                         uint8_t;
  
 #ifndef TRUE
 #define TRUE                                (1)
@@ -53,8 +53,8 @@ typedef unsigned char 		                uint8_t;
 #define DEBUG_PRINT(...)                         //printf
 
 
-#define _OFFSETOF(TYPE, MEMBER)             				((long)(&(((TYPE *)0)->MEMBER)))
-#define ARRAY_LEN(ARRAY_NAME)               				(sizeof(ARRAY_NAME) / sizeof(ARRAY_NAME[0]))//求数组成员个数
+#define _OFFSETOF(TYPE, MEMBER)                             ((long)(&(((TYPE *)0)->MEMBER)))
+#define ARRAY_LEN(ARRAY_NAME)                               (sizeof(ARRAY_NAME) / sizeof(ARRAY_NAME[0]))//求数组成员个数
 #define GET_ARRAY_TAIL_ADDR(ARRAY_NAME)                     ((void*)((char*)(&(ARRAY_NAME) + 1 ) - 1))//获取数组结尾地址，  注意类型
 #define GET_ARRAY_LAST_ELEMENT_ADDR(ARRAY_NAME,_TYPE_)      (((_TYPE_*)(&(ARRAY_NAME) + 1 ) - 1))//获取数组最后一个元素地址
 
@@ -97,11 +97,11 @@ typedef enum
 
 typedef struct 
 {
-	uint32_t timeOutCnt;//任务计数重载值
-	uint32_t timeOut;//任务计数值
-	void* (*Task_func)(void *arg);//任务函数指针
-	void *par ;//任务函数参数
-	cmTask_status status;// 任务状态
+    uint32_t timeOutCnt;//任务计数重载值
+    uint32_t timeOut;//任务计数值
+    void* (*Task_func)(void *arg);//任务函数指针
+    void *par ;//任务函数参数
+    cmTask_status status;// 任务状态
     char name[TASK_NAME_LEN_MAX];
 }ScmTask_info;//单任务信息
 
@@ -128,16 +128,16 @@ void  Task_scheduling (void);
 
 typedef struct
 {
-	char data[QUEUE_DATA_LEN_MAX];
-	uint32_t len;
+    char data[QUEUE_DATA_LEN_MAX];
+    uint32_t len;
 }ScmQueue_data;
 
 typedef struct
 {
-	//mutex_t clock;    //互斥锁
-	uint32_t Queue_sum;
+    //mutex_t clock;    //互斥锁
+    uint32_t Queue_sum;
     uint32_t Queue_new;
-	ScmQueue_data List[QUEUE_AMOUNT_MAX];
+    ScmQueue_data List[QUEUE_AMOUNT_MAX];
 }ScmQueue_info;
 
 

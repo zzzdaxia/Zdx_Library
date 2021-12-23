@@ -25,13 +25,13 @@ volatile static Sys_Task Task_info_all;
 // 无操作系统下的分时调度
 /********************************************************
   * @Description：   创建一个任务
-  * @Arguments	：
-			    TaskName        任务名称，指向ASCII字符串的指针
-			    task            任务控制块指针
-			    start_routine   任务函数
-			    par             传递给任务函数的参数  
-			    period          任务调度周期
-  * @Returns	：
+  * @Arguments    ：
+                TaskName        任务名称，指向ASCII字符串的指针
+                task            任务控制块指针
+                start_routine   任务函数
+                par             传递给任务函数的参数  
+                period          任务调度周期
+  * @Returns    ：
                 0   创建成功
                 -1  创建失败
   * @author     : 周大侠     2020-8-15 15:17:49
@@ -73,9 +73,9 @@ int Task_create(char* TaskName ,task_t *task ,void *(*start_routine)(void *arg) 
 
 /********************************************************
   * @Description：删除一个任务
-  * @Arguments	：
-			    task   任务控制块指针
-  * @Returns	：
+  * @Arguments    ：
+                task   任务控制块指针
+  * @Returns    ：
   * @author     : 周大侠         2020-8-15 15:23:37  
  *******************************************************/
 void Task_cancel(task_t* task) 
@@ -88,8 +88,8 @@ void Task_cancel(task_t* task)
 
 /********************************************************
   * @Description：任务计时
-  * @Arguments	：
-  * @Returns	：
+  * @Arguments    ：
+  * @Returns    ：
   * @author     : 周大侠    2020-8-15 15:54:49
   * @remark     ：定时器1mS 执行一次
  *******************************************************/
@@ -113,9 +113,9 @@ void Task_reckon_time(void)
 
 /********************************************************
   * @Description：任务调度
-  * @Arguments	：
+  * @Arguments    ：
                 无
-  * @Returns	：
+  * @Returns    ：
                 无 
   * @author     : 周大侠     
  *******************************************************/
@@ -146,9 +146,9 @@ void  Task_scheduling (void)
 //队列管理
 /********************************************************
   * @Description：队列初始化
-  * @Arguments	：
+  * @Arguments    ：
                 p_Queue:[IN]队列句柄
-  * @Returns	：
+  * @Returns    ：
                 -1 fall
                 0 succeed
   * @author     : 周大侠                   
@@ -166,11 +166,11 @@ int Queue_init(ScmQueue_info *p_Queue)
 
 /********************************************************
   * @Description：队列-入队
-  * @Arguments	：
+  * @Arguments    ：
                 p_Queue:[IN]队列句柄
                 pData:  [IN]:数据指针
                 uSize:  [IN]:数据大小
-  * @Returns	：
+  * @Returns    ：
                 -1 fall
                 0 succeed
   * @author     : 周大侠                   
@@ -180,31 +180,31 @@ int Queue_add(ScmQueue_info *p_Queue, void* pData, uint32_t uSize)
     uint32_t point_to_end = 0;
     int result = 0;
     
-	//xSemaphoreTake( p_Queue->clock, portMAX_DELAY );  
+    //xSemaphoreTake( p_Queue->clock, portMAX_DELAY );  
     if(p_Queue->Queue_sum < QUEUE_AMOUNT_MAX && NULL != pData && uSize <= QUEUE_DATA_LEN_MAX)
     {
-		point_to_end = p_Queue->Queue_new + p_Queue->Queue_sum;
-		point_to_end = (point_to_end >= QUEUE_AMOUNT_MAX) ? ( point_to_end -= QUEUE_AMOUNT_MAX) : (point_to_end);
+        point_to_end = p_Queue->Queue_new + p_Queue->Queue_sum;
+        point_to_end = (point_to_end >= QUEUE_AMOUNT_MAX) ? ( point_to_end -= QUEUE_AMOUNT_MAX) : (point_to_end);
 
-		memcpy(&p_Queue->List[point_to_end].data[0],(uint8_t*)pData,uSize);
-		p_Queue->List[point_to_end].len = uSize;
-		p_Queue->Queue_sum++;     
+        memcpy(&p_Queue->List[point_to_end].data[0],(uint8_t*)pData,uSize);
+        p_Queue->List[point_to_end].len = uSize;
+        p_Queue->Queue_sum++;     
     }
     else
     {
         DEBUG_PRINT("Queue_add fill.\n");
         result = -1;
     } 
-	//xSemaphoreGive( p_Queue->clock );    
+    //xSemaphoreGive( p_Queue->clock );    
 
-	return result;
+    return result;
 }
 
 /********************************************************
   * @Description：队列-出队
-  * @Arguments	：
+  * @Arguments    ：
                 p_Queue:[IN]队列句柄
-  * @Returns	：
+  * @Returns    ：
                 -1 fall
                 0 succeed   
   * @author     : 周大侠    
@@ -215,7 +215,7 @@ int Queue_del(ScmQueue_info *p_Queue)
     uint32_t point_to_head = p_Queue->Queue_new;
     int result = 0;
 
-	//xSemaphoreTake( p_Queue->clock, portMAX_DELAY );  
+    //xSemaphoreTake( p_Queue->clock, portMAX_DELAY );  
     if(p_Queue->Queue_new < QUEUE_AMOUNT_MAX && p_Queue->Queue_sum >= 1)
     {
         //memset(&p_Queue->List[p_Queue->Queue_new].data[0],00,QUEUE_DATA_LEN_MAX);
@@ -233,17 +233,17 @@ int Queue_del(ScmQueue_info *p_Queue)
         DEBUG_PRINT("FUN Queue_del err.\n");
         result = -1;
     } 
-	//xSemaphoreGive( p_Queue->clock ); 
-	
-	return result;
+    //xSemaphoreGive( p_Queue->clock ); 
+    
+    return result;
 }
 
 /********************************************************
   * @Description：队列-读取队列头成员
-  * @Arguments	：
-			    p_Queue: [IN]队列句柄
+  * @Arguments    ：
+                p_Queue: [IN]队列句柄
                 pData[OUT]: 存放头部成员数据的指针
-  * @Returns	：
+  * @Returns    ：
                 [OUT]数据大小
   * @author     : 周大侠                   
  *******************************************************/
@@ -251,23 +251,23 @@ uint32_t Queue_get(ScmQueue_info *p_Queue, char** pData)
 {
     uint32_t len = 0;
     
-	//xSemaphoreTake( p_Queue->clock, portMAX_DELAY ); 
-	if(NULL != p_Queue && NULL != pData)
-	{
-	    if(0 < p_Queue->Queue_sum && NULL != p_Queue->List[p_Queue->Queue_new].data)
-	    {
-	        *pData = (char*)p_Queue->List[p_Queue->Queue_new].data;
-	        len = p_Queue->List[p_Queue->Queue_new].len;
-	    }
-	    else
-	    {
+    //xSemaphoreTake( p_Queue->clock, portMAX_DELAY ); 
+    if(NULL != p_Queue && NULL != pData)
+    {
+        if(0 < p_Queue->Queue_sum && NULL != p_Queue->List[p_Queue->Queue_new].data)
+        {
+            *pData = (char*)p_Queue->List[p_Queue->Queue_new].data;
+            len = p_Queue->List[p_Queue->Queue_new].len;
+        }
+        else
+        {
             *pData = NULL;
-	        len = 0;
-	    }
-	}
-	//xSemaphoreGive( p_Queue->clock )
-	
-	return len;
+            len = 0;
+        }
+    }
+    //xSemaphoreGive( p_Queue->clock )
+    
+    return len;
 }
 
 
@@ -279,10 +279,10 @@ uint32_t Queue_get(ScmQueue_info *p_Queue, char** pData)
 
 /********************************************************
   * @Description：   初始化环形缓冲区
-  * @Arguments	：
-			    pRing  环形缓冲区结构指针
-			    size   设置环形缓冲区大小
-  * @Returns	：
+  * @Arguments    ：
+                pRing  环形缓冲区结构指针
+                size   设置环形缓冲区大小
+  * @Returns    ：
                 0   成功
                 -1  失败
  *******************************************************/
@@ -293,29 +293,29 @@ int initRingbuffer(ScmRingBuff* pRing ,uint32_t size)
     if(NULL != pRing)
     {
         if(pRing->pHead == NULL)
-    	{
-    		pRing->pHead = (char*) malloc(size);
-    		if(NULL != pRing->pHead)
-    		{
-    		    pRing->pValid = pRing->pValidTail = pRing->pHead;
-            	pRing->pTail = pRing->pHead + size;
-            	pRing->validLen = 0;
+        {
+            pRing->pHead = (char*) malloc(size);
+            if(NULL != pRing->pHead)
+            {
+                pRing->pValid = pRing->pValidTail = pRing->pHead;
+                pRing->pTail = pRing->pHead + size;
+                pRing->validLen = 0;
                 pRing->RingSize = size;
                 //pRing->clock  init
-            	result = 0;
-    		}
-    	}
+                result = 0;
+            }
+        }
     }
     return result;
 }
  
  /********************************************************
   * @Description：   向缓冲区写入数据
-  * @Arguments	：
+  * @Arguments    ：
                 pRing   环形缓冲区结构指针
-			    buffer   写入的数据指针
-			    addLen   写入的数据长度
-  * @Returns	：
+                buffer   写入的数据指针
+                addLen   写入的数据长度
+  * @Returns    ：
                 0   成功
                 -1:缓冲区没有初始化
                 -2:写入长度过大
@@ -332,58 +332,58 @@ int wirteRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t addLen)
             if(addLen <= pRing->RingSize)
             {
                 //将要存入的数据copy到pValidTail处
-            	if(pRing->pValidTail + addLen > pRing->pTail)//需要分成两段copy
-            	{
-            		uint32_t len1 = pRing->pTail - pRing->pValidTail;
-            		uint32_t len2 = addLen - len1;
-            		memcpy( pRing->pValidTail, buffer, len1);
-            		memcpy( pRing->pHead, buffer + len1, len2);
-            		pRing->pValidTail = pRing->pHead + len2;//新的有效数据区结尾指针
-            	}
-            	else
-            	{
-            		memcpy( pRing->pValidTail, buffer, addLen);
-            		pRing->pValidTail += addLen;//新的有效数据区结尾指针
-            	}
+                if(pRing->pValidTail + addLen > pRing->pTail)//需要分成两段copy
+                {
+                    uint32_t len1 = pRing->pTail - pRing->pValidTail;
+                    uint32_t len2 = addLen - len1;
+                    memcpy( pRing->pValidTail, buffer, len1);
+                    memcpy( pRing->pHead, buffer + len1, len2);
+                    pRing->pValidTail = pRing->pHead + len2;//新的有效数据区结尾指针
+                }
+                else
+                {
+                    memcpy( pRing->pValidTail, buffer, addLen);
+                    pRing->pValidTail += addLen;//新的有效数据区结尾指针
+                }
      
-            	//需重新计算已使用区的起始位置
-            	if(pRing->validLen + addLen > pRing->RingSize)
-            	{
-            		int moveLen = pRing->validLen + addLen - pRing->RingSize;//有效指针将要移动的长度
-            		if(pRing->pValid + moveLen > pRing->pTail)//需要分成两段计算
-            		{
-            			uint32_t len1 = pRing->pTail - pRing->pValid;
-            			uint32_t len2 = moveLen - len1;
-            			pRing->pValid = pRing->pHead + len2;
-            		}
-            		else
-            		{
-            			pRing->pValid = pRing->pValid + moveLen;
-            		}
-            		
-            		pRing->validLen = pRing->RingSize;
-            	}
-            	else
-            	{
-            		pRing->validLen += addLen;
-            	}
-            	result = 0;    
+                //需重新计算已使用区的起始位置
+                if(pRing->validLen + addLen > pRing->RingSize)
+                {
+                    int moveLen = pRing->validLen + addLen - pRing->RingSize;//有效指针将要移动的长度
+                    if(pRing->pValid + moveLen > pRing->pTail)//需要分成两段计算
+                    {
+                        uint32_t len1 = pRing->pTail - pRing->pValid;
+                        uint32_t len2 = moveLen - len1;
+                        pRing->pValid = pRing->pHead + len2;
+                    }
+                    else
+                    {
+                        pRing->pValid = pRing->pValid + moveLen;
+                    }
+                    
+                    pRing->validLen = pRing->RingSize;
+                }
+                else
+                {
+                    pRing->validLen += addLen;
+                }
+                result = 0;    
             }
             else
                 result = -2;
         }
-	    //xSemaphoreGive( pRing->clock );    
+        //xSemaphoreGive( pRing->clock );    
     }
     return result;
 }
  
 /********************************************************
   * @Description：   向缓冲区读出数据
-  * @Arguments	：
+  * @Arguments    ：
                 pRing   环形缓冲区结构指针
-			    buffer  接收数据缓存
-			    len     将要接收的数据长度
-  * @Returns	：
+                buffer  接收数据缓存
+                len     将要接收的数据长度
+  * @Returns    ：
                 大于0  实际读取的长度
                 -1:缓冲区没有初始化
  *******************************************************/
@@ -401,25 +401,25 @@ int readRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t len)
                 if( len >= pRing->validLen) 
                     len = pRing->validLen;
                     
-            	if(pRing->pValid + len > pRing->pTail)//需要分成两段copy
-            	{
-            		uint32_t len1 = pRing->pTail - pRing->pValid;
-            		uint32_t len2 = len - len1;
-            		memcpy( buffer, pRing->pValid, len1);//第一段
-            		memcpy( buffer+len1, pRing->pHead, len2);//第二段，绕到整个存储区的开头
+                if(pRing->pValid + len > pRing->pTail)//需要分成两段copy
+                {
+                    uint32_t len1 = pRing->pTail - pRing->pValid;
+                    uint32_t len2 = len - len1;
+                    memcpy( buffer, pRing->pValid, len1);//第一段
+                    memcpy( buffer+len1, pRing->pHead, len2);//第二段，绕到整个存储区的开头
      
-            		//注释此语句，则读取的数据不会被清除
-            		pRing->pValid = pRing->pHead + len2;//更新已使用缓冲区的起始
-            	}
-            	else
-            	{
-            		memcpy( buffer, pRing->pValid, len);
-            		//注释此语句，则读取的数据不会被清除
-            		pRing->pValid = pRing->pValid +len;//更新已使用缓冲区的起始
-            	}
-            	//注释此语句，则读取的数据不会被清除
-            	pRing->validLen -= len;//更新已使用缓冲区的长度
-            	result = len;
+                    //注释此语句，则读取的数据不会被清除
+                    pRing->pValid = pRing->pHead + len2;//更新已使用缓冲区的起始
+                }
+                else
+                {
+                    memcpy( buffer, pRing->pValid, len);
+                    //注释此语句，则读取的数据不会被清除
+                    pRing->pValid = pRing->pValid +len;//更新已使用缓冲区的起始
+                }
+                //注释此语句，则读取的数据不会被清除
+                pRing->validLen -= len;//更新已使用缓冲区的长度
+                result = len;
             }
             else
                 result = 0;
@@ -432,9 +432,9 @@ int readRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t len)
  
 /********************************************************
   * @Description：   释放环形缓冲区
-  * @Arguments	：
+  * @Arguments    ：
                 pRing   环形缓冲区结构指针
-  * @Returns	：
+  * @Returns    ：
                 0   成功
                 -1  失败
  *******************************************************/
@@ -450,7 +450,7 @@ int releaseRingbuffer(ScmRingBuff* pRing)
         memset((char*)pRing,00,sizeof(ScmRingBuff));
         result = 0;
     }
-	return result;
+    return result;
 }
 
 #endif
@@ -460,10 +460,10 @@ int releaseRingbuffer(ScmRingBuff* pRing)
 
 /********************************************************
   * @Description：字节对齐 malloc
-  * @Arguments	：
+  * @Arguments    ：
                 required_bytes   要申请内存字节大小 (Byte)
                 alignment 字节对齐值 必须为2的n次方
-  * @Returns	：
+  * @Returns    ：
                 0   申请失败
                 其它：得到的地址
   * @author     : 周大侠     2021-3-13 11:28:07
@@ -486,9 +486,9 @@ void* aligned_malloc(size_t required_bytes, size_t alignment)
  
 /********************************************************
   * @Description：字节对齐的 内存释放
-  * @Arguments	：
+  * @Arguments    ：
                 r 要释放的地址值
-  * @Returns	：
+  * @Returns    ：
   * @author     : 周大侠     2021-3-13 11:28:07
  *******************************************************/
 void aligned_free(void* r)
