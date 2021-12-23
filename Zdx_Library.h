@@ -40,7 +40,6 @@ typedef unsigned short 		                uint16_t;
 typedef signed char 		                int8_t;
 typedef unsigned char 		                uint8_t;
  
-
 #ifndef TRUE
 #define TRUE                                (1)
 #define FALSE                               (0)
@@ -66,12 +65,12 @@ typedef unsigned char 		                uint8_t;
 #define GET_BIT(_Val_,_Bit_)                (((_Val_) >> (_Bit_)) & 0x0001)
 
 #define BigLittleSwap16(_16t_)              ((((uint16_t)(_16t_) & 0xff00) >> 8) | \
-                                              (((uint16_t)(_16t_) & 0x00ff) << 8))
+                                            (((uint16_t)(_16t_) & 0x00ff) << 8))
 
 #define BigLittleSwap32(_32t_)              ((((uint32_t)(_32t_) & 0xff000000) >> 24) | \
-                                              (((uint32_t)(_32t_) & 0x00ff0000) >> 8) | \
-                                              (((uint32_t)(_32t_) & 0x0000ff00) << 8) | \
-                                              (((uint32_t)(_32t_) & 0x000000ff) << 24))
+                                            (((uint32_t)(_32t_) & 0x00ff0000) >> 8) | \
+                                            (((uint32_t)(_32t_) & 0x0000ff00) << 8) | \
+                                            (((uint32_t)(_32t_) & 0x000000ff) << 24))
 
 
 
@@ -96,7 +95,6 @@ typedef enum
     TASK_Suspend = 3,//挂起  
 }cmTask_status;//任务状态
 
-
 typedef struct 
 {
 	uint32_t timeOutCnt;//任务计数重载值
@@ -106,8 +104,6 @@ typedef struct
 	cmTask_status status;// 任务状态
     char name[TASK_NAME_LEN_MAX];
 }ScmTask_info;//单任务信息
-
-
 
 typedef struct 
 {
@@ -145,13 +141,11 @@ typedef struct
 }ScmQueue_info;
 
 
-
 //队列管理
 int Queue_init(ScmQueue_info *p_Queue);
-int Queue_add(ScmQueue_info *p_Queue,char* data,uint32_t len);
+int Queue_add(ScmQueue_info *p_Queue, void* pData, uint32_t uSize);
 int Queue_del(ScmQueue_info *p_Queue);
-uint32_t Queue_get(ScmQueue_info *p_Queue,char ** data);
-
+uint32_t Queue_get(ScmQueue_info *p_Queue, char** pData);
 
 #endif
 
@@ -171,15 +165,12 @@ typedef struct
 }ScmRingBuff;
 
 
-
 int initRingbuffer(ScmRingBuff* pRing ,uint32_t size);
 int wirteRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t addLen);
 int readRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t len);
 int releaseRingbuffer(ScmRingBuff* pRing);
 
-
 #endif
-
 
 
 #ifdef ZDX_MEMORY
@@ -187,19 +178,7 @@ int releaseRingbuffer(ScmRingBuff* pRing);
 void* aligned_malloc(size_t         required_bytes, size_t alignment);
 void aligned_free(void* r);
 
-
 #endif
-
-
-
-
-
-
-
-
-
-
-
 
 
 #endif

@@ -71,7 +71,6 @@ int Task_create(char* TaskName ,task_t *task ,void *(*start_routine)(void *arg) 
     return -1;
 }
 
-
 /********************************************************
   * @Description：删除一个任务
   * @Arguments	：
@@ -86,7 +85,6 @@ void Task_cancel(task_t* task)
     else
         memset((char*)&Task_info_all.Task_queue[*(task)],00,sizeof(ScmTask_info));
 }
-
 
 /********************************************************
   * @Description：任务计时
@@ -112,8 +110,6 @@ void Task_reckon_time(void)
         }
      }
 }
-
-
 
 /********************************************************
   * @Description：任务调度
@@ -145,16 +141,13 @@ void  Task_scheduling (void)
 #endif
 
 
-
-
-
 #ifdef ZDX_QUEUE
 
 //队列管理
 /********************************************************
   * @Description：队列初始化
   * @Arguments	：
-			    p_Queue  队列表
+                p_Queue:[IN]队列句柄
   * @Returns	：
                 -1 fall
                 0 succeed
@@ -168,37 +161,33 @@ int Queue_init(ScmQueue_info *p_Queue)
         //p_Queue->clock  init
         return 0;
     }
-    
     return -1;
 }
 
-
-
 /********************************************************
-  * @Description：增加队列成员---  入队
+  * @Description：队列-入队
   * @Arguments	：
-			    p_Queue  队列表
-			    data 数据
-			    len 数据长度
+                p_Queue:[IN]队列句柄
+                pData:  [IN]:数据指针
+                uSize:  [IN]:数据大小
   * @Returns	：
                 -1 fall
                 0 succeed
   * @author     : 周大侠                   
  *******************************************************/
-int Queue_add(ScmQueue_info *p_Queue,char* data,uint32_t len)
+int Queue_add(ScmQueue_info *p_Queue, void* pData, uint32_t uSize)
 {
     uint32_t point_to_end = 0;
     int result = 0;
     
 	//xSemaphoreTake( p_Queue->clock, portMAX_DELAY );  
-	
-    if(p_Queue->Queue_sum < QUEUE_AMOUNT_MAX && NULL != data && len <= QUEUE_DATA_LEN_MAX)
+    if(p_Queue->Queue_sum < QUEUE_AMOUNT_MAX && NULL != pData && uSize <= QUEUE_DATA_LEN_MAX)
     {
 		point_to_end = p_Queue->Queue_new + p_Queue->Queue_sum;
 		point_to_end = (point_to_end >= QUEUE_AMOUNT_MAX) ? ( point_to_end -= QUEUE_AMOUNT_MAX) : (point_to_end);
 
-		memcpy(&p_Queue->List[point_to_end].data[0],data,len);
-		p_Queue->List[point_to_end].len = len;
+		memcpy(&p_Queue->List[point_to_end].data[0],(uint8_t*)pData,uSize);
+		p_Queue->List[point_to_end].len = uSize;
 		p_Queue->Queue_sum++;     
     }
     else
@@ -212,13 +201,14 @@ int Queue_add(ScmQueue_info *p_Queue,char* data,uint32_t len)
 }
 
 /********************************************************
-  * @Description：删除队列成员---出队
+  * @Description：队列-出队
   * @Arguments	：
-			    p_Queue  队列表
+                p_Queue:[IN]队列句柄
   * @Returns	：
                 -1 fall
                 0 succeed   
-  * @author     : 周大侠                   
+  * @author     : 周大侠    
+  * @notice     : 移除一个头部成员
  *******************************************************/
 int Queue_del(ScmQueue_info *p_Queue)
 {
@@ -226,10 +216,9 @@ int Queue_del(ScmQueue_info *p_Queue)
     int result = 0;
 
 	//xSemaphoreTake( p_Queue->clock, portMAX_DELAY );  
-	
     if(p_Queue->Queue_new < QUEUE_AMOUNT_MAX && p_Queue->Queue_sum >= 1)
     {
-        memset(&p_Queue->List[p_Queue->Queue_new].data[0],00,QUEUE_DATA_LEN_MAX);
+        //memset(&p_Queue->List[p_Queue->Queue_new].data[0],00,QUEUE_DATA_LEN_MAX);
         p_Queue->List[p_Queue->Queue_new].len = 0;
         p_Queue->Queue_sum--;
         if(p_Queue->Queue_sum > 0)
@@ -244,62 +233,50 @@ int Queue_del(ScmQueue_info *p_Queue)
         DEBUG_PRINT("FUN Queue_del err.\n");
         result = -1;
     } 
-	
 	//xSemaphoreGive( p_Queue->clock ); 
+	
 	return result;
 }
 
-
 /********************************************************
-  * @Description：读取队列头--读头元素
+  * @Description：队列-读取队列头成员
   * @Arguments	：
-			    p_Queue  队列表
-			    data  要存放的数据的指针的地址
+			    p_Queue: [IN]队列句柄
+                pData[OUT]: 存放头部成员数据的指针
   * @Returns	：
-                0或许是失败
-                其余表示数据长度
+                [OUT]数据大小
   * @author     : 周大侠                   
  *******************************************************/
-uint32_t Queue_get(ScmQueue_info *p_Queue,char ** data)
+uint32_t Queue_get(ScmQueue_info *p_Queue, char** pData)
 {
     uint32_t len = 0;
     
 	//xSemaphoreTake( p_Queue->clock, portMAX_DELAY ); 
-	if(NULL != p_Queue && NULL != data)
+	if(NULL != p_Queue && NULL != pData)
 	{
 	    if(0 < p_Queue->Queue_sum && NULL != p_Queue->List[p_Queue->Queue_new].data)
 	    {
-	        *data = (char*)p_Queue->List[p_Queue->Queue_new].data;
+	        *pData = (char*)p_Queue->List[p_Queue->Queue_new].data;
 	        len = p_Queue->List[p_Queue->Queue_new].len;
 	    }
 	    else
 	    {
-            *data = NULL;
+            *pData = NULL;
 	        len = 0;
 	    }
-	    
 	}
 	//xSemaphoreGive( p_Queue->clock )
+	
 	return len;
 }
 
 
 #endif
-
-
-
-
-
-
-
-
  
  
 #ifdef ZDX_RING_REDIS
 //环形缓存
 
- 
- 
 /********************************************************
   * @Description：   初始化环形缓冲区
   * @Arguments	：
@@ -331,7 +308,6 @@ int initRingbuffer(ScmRingBuff* pRing ,uint32_t size)
     }
     return result;
 }
- 
  
  /********************************************************
   * @Description：   向缓冲区写入数据
@@ -401,14 +377,12 @@ int wirteRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t addLen)
     return result;
 }
  
- 
- 
 /********************************************************
   * @Description：   向缓冲区读出数据
   * @Arguments	：
                 pRing   环形缓冲区结构指针
-			    buffer   接收数据缓存
-			    addLen   将要接收的数据长度
+			    buffer  接收数据缓存
+			    len     将要接收的数据长度
   * @Returns	：
                 大于0  实际读取的长度
                 -1:缓冲区没有初始化
@@ -456,7 +430,6 @@ int readRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t len)
     return result;
 }
  
- 
 /********************************************************
   * @Description：   释放环形缓冲区
   * @Arguments	：
@@ -480,7 +453,6 @@ int releaseRingbuffer(ScmRingBuff* pRing)
 	return result;
 }
 
-
 #endif
 
 
@@ -496,7 +468,7 @@ int releaseRingbuffer(ScmRingBuff* pRing)
                 其它：得到的地址
   * @author     : 周大侠     2021-3-13 11:28:07
  *******************************************************/
-void* aligned_malloc(size_t         required_bytes, size_t alignment)
+void* aligned_malloc(size_t required_bytes, size_t alignment)
 {
     void* res = nullptr;
     size_t   offset = alignment - 1 + sizeof(void*);//需要增加调整空间和存放实际地址的空间
@@ -526,7 +498,6 @@ void aligned_free(void* r)
         void** tmp = (void**)r;
         free(tmp[-1]);
     }
- 
 }
 
 #endif
