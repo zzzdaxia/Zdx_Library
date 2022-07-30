@@ -30,15 +30,15 @@
 #define PHASE_VERSION                       "_Beta";
 #endif
 
-#define VERSION_NAME_MAX_SIZE                32U
+#define VERSION_NAME_MAX_SIZE               32U
 
 
 typedef signed int                          int32_t;
-typedef unsigned int                         uint32_t;
-typedef signed short                         int16_t;
-typedef unsigned short                         uint16_t;
+typedef unsigned int                        uint32_t;
+typedef signed short                        int16_t;
+typedef unsigned short                      uint16_t;
 typedef signed char                         int8_t;
-typedef unsigned char                         uint8_t;
+typedef unsigned char                       uint8_t;
  
 #ifndef TRUE
 #define TRUE                                (1)
@@ -52,7 +52,7 @@ typedef unsigned char                         uint8_t;
 
 #define DEBUG_PRINT(...)                         //printf
 
-
+#define MY_SIZEOF(_T_)                                      ((uint32)((typeof(_T_)*)0 + 1)) 
 #define _OFFSETOF(TYPE, MEMBER)                             ((long)(&(((TYPE *)0)->MEMBER)))
 #define ARRAY_LEN(ARRAY_NAME)                               (sizeof(ARRAY_NAME) / sizeof(ARRAY_NAME[0]))//求数组成员个数
 #define GET_ARRAY_TAIL_ADDR(ARRAY_NAME)                     ((void*)((char*)(&(ARRAY_NAME) + 1 ) - 1))//获取数组结尾地址，  注意类型
