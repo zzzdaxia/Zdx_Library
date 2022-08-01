@@ -49,8 +49,9 @@ typedef unsigned char                       uint8_t;
 #define ZDX_QUEUE           //队列管理
 #define ZDX_RING_REDIS      //环形缓存
 #define ZDX_MEMORY          //内存管理
-
-#define DEBUG_PRINT(...)                         //printf
+#define TIME_CONVERSION     //时间转换
+    
+#define DEBUG_PRINT(...)    //printf
 
 #define MY_SIZEOF(_T_)                                      ((uint32)((typeof(_T_)*)0 + 1)) 
 #define _OFFSETOF(TYPE, MEMBER)                             ((long)(&(((TYPE *)0)->MEMBER)))
@@ -180,6 +181,25 @@ void aligned_free(void* r);
 
 #endif
 
+
+#ifdef TIME_CONVERSION
+
+typedef struct
+{
+    uint16_t year; //[1970,2100]
+    uint8_t month; //[1,12]
+    uint8_t day;   //[1,31]
+    uint8_t hour;  //[0,23]
+    uint8_t minte; //[0,59]
+    uint8_t second;//[0,59]
+    uint16_t msec; //[0,999]
+}TimeStruct;
+
+uint32_t Time_strTimeToUtime(TimeStruct* pStrTime);
+void Time_uTimeToStrTime(uint32_t uTime, TimeStruct* pStrTime);
+int Time_checkFormatIsLegal(uint16 year, uint8 month, uint8 day , 
+                                  uint8 hour, uint8 minte, uint8 second);
+#endif
 
 #endif
 

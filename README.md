@@ -11,6 +11,8 @@
 
 4. MEMORY 内存管理
 
+5. TIME 时间转换
+
 ## 1. TASK 任务调度：#define ZDX_TASK   ##
 
 无RTOS(裸机环境)下实现分时调度法，非常适用于单片机环境下的一般应用场景
@@ -52,12 +54,12 @@ RTOS优点不用多说了，但对于一些简单的业务需求，移植一个�
     		Task_scheduling(); //死循环，任务调度
     	}
     }
-
-	//定时器中断回调函数 1mS一次中断 
-	void CallBack_time_it(void)
-	{
-		Task_reckon_time();//任务周期计算
-	}
+    
+    //定时器中断回调函数 1mS一次中断 
+    void CallBack_time_it(void)
+    {
+    	Task_reckon_time();//任务周期计算
+    }
 
 
 
@@ -111,3 +113,13 @@ void aligned_free(void* r)
 
 内存模型：
 ![](https://img-blog.csdnimg.cn/202103131542419.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM3ODMwNzU3,size_16,color_FFFFFF,t_70)
+
+
+
+## 5. TIME  时间转换：#define TIME_CONVERSION    ##
+
+1.Time_strTimeToUtime   时间格式转化成时间戳
+
+2.Time_uTimeToStrTime  时间戳转换成时间格式结构体
+
+3.Time_checkFormatIsLegal 判断时间是否合法

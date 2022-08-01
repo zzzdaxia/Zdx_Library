@@ -502,3 +502,192 @@ void aligned_free(void* r)
 
 #endif
 
+#ifdef TIME_CONVERSION
+
+/********************************************************
+  * @Description：闰年判断
+  * @Arguments    ：
+                year[IN] 判断的年份
+  * @Returns    ：
+                0：平年
+                1： 闰年 
+  * @author     : 周大侠     2022-8-1 20:19:29
+ *******************************************************/
+static uint8_t Time_checkLeapYear(uint16_t uYear)
+{
+    return (((uYear) % 4) == 0 && (((uYear) % 100) != 0 || ((uYear) % 400) == 0));
+}
+
+/********************************************************
+  * @Description：时间格式转化成时间戳
+  * @Arguments    ：
+                pStrTime[IN] 时间结构体
+  * @Returns    ：
+                从1970年起的时间戳
+  * @author     : 周大侠     2022-8-1 20:19:29
+ *******************************************************/
+uint32_t Time_strTimeToUtime(TimeStruct* pStrTime)
+{
+    const uint16_t mon_yday[2][12] = 
+    {
+        {0,31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
+        {0,31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335},
+    };
+    uint32_t ret;
+    int i = 0;
+
+    if(NULL == pStrTime || 0 == pStrTime->day ||
+        0 == pStrTime->month || 12 < pStrTime->month || 1970 > pStrTime->year )
+    {
+        return 0;
+    }
+    
+    // 以平年时间计算的秒数
+    ret = (pStrTime->year - 1970) * 365 * 24 * 3600;
+    ret += (mon_yday[Time_checkLeapYear(pStrTime->year)][pStrTime->month - 1] + pStrTime->day - 1) * 24 * 3600;
+    ret += pStrTime->hour * 3600 + pStrTime->minte * 60 + pStrTime->second;
+    // 加上闰年的秒数
+    for(i = 1970; i < pStrTime->year; i++)
+    {
+        if(Time_checkLeapYear(i))
+        {
+            ret += 24 * 3600;
+        }
+    }
+    if(ret > 4107715199U)//2100-02-29 23:59:59
+    { 
+        ret += 24 * 3600;
+    }
+    return(ret);
+}
+
+/********************************************************
+  * @Description：时间戳转换成时间格式结构体
+  * @Arguments    ：
+                uTime[IN] 时间戳
+                pStrTime[OUT] 输出的时间结构体指针
+  * @Returns    ：
+                NULL
+  * @author     : 周大侠     2022-8-1 20:19:29
+ *******************************************************/
+void Time_uTimeToStrTime(uint32_t uTime, TimeStruct* pStrTime)
+{
+    const char Days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+    uint32_t Pass4year;
+    int hours_per_year;
+
+    pStrTime->msec = 0;
+    //取秒时间
+    pStrTime->second=(int)(uTime % 60);
+    uTime /= 60;
+    //取分钟时间
+    pStrTime->minte=(int)(uTime % 60);
+    uTime /= 60;
+    //取过去多少个四年，每四年有 1461*24 小时
+    Pass4year = uTime / (1461L * 24L);
+    //计算年份
+    pStrTime->year=(Pass4year << 2) + 1970;
+    //四年中剩下的小时数
+    uTime %= 1461L * 24L;
+    //校正闰年影响的年份，计算一年中剩下的小时数
+    while(1)
+    {
+        //一年的小时数
+        hours_per_year = 365 * 24;
+        //判断闰年，是闰年，一年则多24小时，即一天
+        if ((pStrTime->year & 3) == 0) hours_per_year += 24;
+
+        if (uTime < hours_per_year) break;
+
+        pStrTime->year++;
+        uTime -= hours_per_year;
+    }
+    //小时数
+    pStrTime->hour=(int)(uTime % 24);
+    //一年中剩下的天数
+    uTime /= 24;
+    //假定为闰年
+    uTime++;
+    //校正闰年的误差，计算月份，日期
+    if((pStrTime->year & 3) == 0)
+    {
+        if (uTime > 60) 
+        {
+            uTime--;
+        } 
+        else 
+        {
+            if (uTime == 60) 
+            {
+                pStrTime->month = 2;
+                pStrTime->day = 29;
+                return ;
+            }
+        }
+    }
+    //计算月日
+    for (pStrTime->month = 1; Days[pStrTime->month - 1] < uTime;pStrTime->month++)
+    {
+        uTime -= Days[pStrTime->month - 1];
+    }
+
+    pStrTime->day = (uint8_t)(uTime);
+
+    return;
+}
+
+/********************************************************
+  * @Description：判断时间是否合法
+  * @Arguments    ：
+                year[IN]  年
+                month[IN] 月
+                day[IN]   日
+                hour[IN]  时
+                minte[IN] 分
+                second[IN]秒
+  * @Returns    ：
+                0 :合法
+                其它：非法
+  * @author     : 周大侠     2022-8-1 20:19:29
+ *******************************************************/
+int Time_checkFormatIsLegal(uint16 year, uint8 month, uint8 day , 
+                                  uint8 hour, uint8 minte, uint8 second)
+{
+    if ((year < 1970) || (year > 2100) || (month == 0) || (month > 12) || 
+    (day == 0) || (hour > 24) || (minte > 59) || (second > 59)) //数值非法
+    {
+        return -1;
+    }
+
+    switch (month)  //日数是否超限
+    {
+        case 1:
+        case 3:
+        case 5:
+        case 7:
+        case 8:
+        case 10:
+        case 12:    if (day > 31) return 0;break;   //一个月31天
+        case 4:
+        case 6:
+        case 9:
+        case 11:    if (day > 30) return 0;break;   //一个月30天
+        case 2:
+            if (((year % 4) == 0 && (year % 100) != 0) || ((year % 400) == 0))  //是否是闰年
+            {
+                if (day > 29)	//闰年2月29天
+                    return -1;
+                break;
+            }
+            else
+            {
+                if (day > 28)	//非闰年2月28天
+                    return -1;
+                break;
+            }
+    }
+    return 0;
+}
+
+#endif
