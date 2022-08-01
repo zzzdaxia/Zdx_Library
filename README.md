@@ -37,33 +37,30 @@ RTOS优点不用多说了，但对于一些简单的业务需求，移植一个�
 
 
 例：
+```c
+void main(void)
+{
+    Drive_init();//时钟、外设、IO 初始化
+    Time_init();//设定1mS中断一次的定时器
+
+    Task_create("test_task_1",Task_1_fun,null,5);//创建一个Task_1_fun 任务 5mS执行一次
+    Task_create("test_led",Led_fun,null,100);//创建一个Led_fun 任务 100mS执行一次
+    Task_create("test_RTC",RTC_fun,null,1000);//创建RTC_fun 任务 1000mS执行一次
+
+    start_time();//启动定时器
     
-    void main(void)
+    while(1)
     {
-    	Drive_init();//时钟、外设、IO 初始化
-    	Time_init();//设定1mS中断一次的定时器
-    
-    	Task_create("test_task_1",Task_1_fun,null,5);//创建一个Task_1_fun 任务 5mS执行一次
-    	Task_create("test_led",Led_fun,null,100);//创建一个Led_fun 任务 100mS执行一次
-    	Task_create("test_RTC",RTC_fun,null,1000);//创建RTC_fun 任务 1000mS执行一次
-    
-     	start_time();//启动定时器
-    
-    	while(1)
-    	{
-    		Task_scheduling(); //死循环，任务调度
-    	}
+        Task_scheduling(); //死循环，任务调度
     }
-    
-    //定时器中断回调函数 1mS一次中断 
-    void CallBack_time_it(void)
-    {
-    	Task_reckon_time();//任务周期计算
-    }
+}
 
-
-
-
+//定时器中断回调函数 1mS一次中断 
+void CallBack_time_it(void)
+{
+    Task_reckon_time();//任务周期计算
+}
+```
 
 
 
@@ -81,8 +78,6 @@ RTOS优点不用多说了，但对于一些简单的业务需求，移植一个�
  Queue_del：出队
 
  Queue_get：读取队列头数据
-
-
 
 
 
