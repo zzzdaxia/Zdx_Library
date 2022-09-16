@@ -1,130 +1,122 @@
 /**
   ******************************************************************************
-  * @file    Library 头文件
+  * @file    Zdx_Library.h
+  * @brief   裸机下常用库头文件
+  * @version V1.1
   * @author  周大侠
-  * @version V1.0
-  * @date    2020-8-15 14:58:34
-  * @brief   周大侠 常用库
+  * @email   zzzdaxia@qq.com
+  * @date    2022-09-16 10:51:48
   ******************************************************************************
-  * @attention
-
+  * @remark
+    Default encoding UTF-8
   ******************************************************************************
   */
 #ifndef _ZDX_LIBRARY_H_
 #define _ZDX_LIBRARY_H_
 
-
-#include    <stdio.h>
-#include    <stdlib.h>
-#include    <string.h>
-
-
-//硬件版本号
-#define HARDWARE_VERSION                    "VER123T" 
-//软件版本号
-#define SOFTWARE_VERSION                    "20200815_ZDX"
-//阶段版本号
-#if (TEST_MODE ) || ( OPEN_WATCH_DOG)
-#define PHASE_VERSION                       "_Test";
-#else
-#define PHASE_VERSION                       "_Beta";
-#endif
-
-#define VERSION_NAME_MAX_SIZE               32U
+/*-----------------------------------------------------------------------------
+ * Include file
+-----------------------------------------------------------------------------*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "common.h"
 
 
-typedef signed int                          int32_t;
-typedef unsigned int                        uint32_t;
-typedef signed short                        int16_t;
-typedef unsigned short                      uint16_t;
-typedef signed char                         int8_t;
-typedef unsigned char                       uint8_t;
- 
-#ifndef TRUE
-#define TRUE                                (1)
-#define FALSE                               (0)
-#endif                                             
+//任务调度
+#define ZDX_TASK
 
-#define ZDX_TASK            //无操作系统下的分时调度
-#define ZDX_QUEUE           //队列管理
-#define ZDX_RING_REDIS      //环形缓存
-#define ZDX_MEMORY          //内存管理
-#define TIME_CONVERSION     //时间转换
+//队列管理
+#define ZDX_QUEUE
+
+//环形缓存
+#define ZDX_RING_REDIS
+
+//内存管理
+#define ZDX_MEMORY
+
+//时间转换
+#define TIME_CONVERSION
     
-#define DEBUG_PRINT(...)    //printf
 
-#define MY_SIZEOF(_T_)                                      ((uint32)((typeof(_T_)*)0 + 1)) 
-#define _OFFSETOF(TYPE, MEMBER)                             ((long)(&(((TYPE *)0)->MEMBER)))
-#define ARRAY_LEN(ARRAY_NAME)                               (sizeof(ARRAY_NAME) / sizeof(ARRAY_NAME[0]))//求数组成员个数
-#define GET_ARRAY_TAIL_ADDR(ARRAY_NAME)                     ((void*)((char*)(&(ARRAY_NAME) + 1 ) - 1))//获取数组结尾地址，  注意类型
-#define GET_ARRAY_LAST_ELEMENT_ADDR(ARRAY_NAME,_TYPE_)      (((_TYPE_*)(&(ARRAY_NAME) + 1 ) - 1))//获取数组最后一个元素地址
+#define DEBUG_OUT(...)              //printf
 
 
-
-#define SET_BIT(_Val_,_Bit_)                ((_Val_) |= (1 << (_Bit_)))
-#define CLEAN_BIT(_Val_,_Bit_)              ((_Val_) &= (~(1 << (_Bit_))))
-#define GET_BIT(_Val_,_Bit_)                (((_Val_) >> (_Bit_)) & 0x0001)
-
-#define BigLittleSwap16(_16t_)              ((((uint16_t)(_16t_) & 0xff00) >> 8) | \
-                                            (((uint16_t)(_16t_) & 0x00ff) << 8))
-
-#define BigLittleSwap32(_32t_)              ((((uint32_t)(_32t_) & 0xff000000) >> 24) | \
-                                            (((uint32_t)(_32t_) & 0x00ff0000) >> 8) | \
-                                            (((uint32_t)(_32t_) & 0x0000ff00) << 8) | \
-                                            (((uint32_t)(_32t_) & 0x000000ff) << 24))
-
-
-
+/*-----------------------------------------------------------------------------
+ * 任务调度
+-----------------------------------------------------------------------------*/
 #ifdef ZDX_TASK
 
-#define TASK_AMOUNT_MAX                     (10U)      // 最大任务数量
-#define TASK_NAME_LEN_MAX                   (20U)      // 任务名最大长度
+#define TASK_MODE_LINKED            1 //链表形式，无限任务
+#define TASK_MODE_ARRAY             0 //数组形式，任务数由宏决定
 
-
-#define TEST_TASK_PERIOD                    (10U)
-#define TEST_TASK_DELAY_MS(_ms_)            (((_ms_) > TEST_TASK_PERIOD) ? ((_ms_) / TEST_TASK_PERIOD -1) : 0)
-
-
-typedef uint32_t                            task_t;//任务控制块
-
+#define TASK_MODE_SELECT            TASK_MODE_LINKED
+#define TASK_NAME_LEN_MAX           (10U) // 任务名最大长度
 
 typedef enum
 {
     TASK_IDLE = 0,//空闲  
-    TASK_Resume = 1,//运行中
-    TASK_ready = 2,//准备中
-    TASK_Suspend = 3,//挂起  
+    TASK_RESUME,//运行态
+    TASK_READY,//准备态
+    TASK_DEL,//删除态
 }cmTask_status;//任务状态
 
 typedef struct 
 {
-    uint32_t timeOutCnt;//任务计数重载值
-    uint32_t timeOut;//任务计数值
-    void* (*Task_func)(void *arg);//任务函数指针
-    void *par ;//任务函数参数
+    uint32_t uPeriod;//任务执行周期
+    uint32_t uCnt;//任务计数值
+    void* (*Task_func)(void*);//任务函数指针
+    void* par ;//任务函数参数
     cmTask_status status;// 任务状态
     char name[TASK_NAME_LEN_MAX];
-}ScmTask_info;//单任务信息
+}ScmTask_Info;//任务信息
+
+#if (TASK_MODE_SELECT == TASK_MODE_LINKED)
+
+typedef struct ScmTask_Node
+{
+    ScmTask_Info taskInfo;
+    struct ScmTask_Node* nextTask;
+}task_t;//任务控制块
 
 typedef struct 
 {
-    uint32_t Task_now;
-    ScmTask_info Task_queue[TASK_AMOUNT_MAX];
+    uint32_t taskSum;
+    task_t* taskNow;
+    task_t* taskHead;
+}Sys_Task;
+
+#elif (TASK_MODE_SELECT == TASK_MODE_ARRAY)
+
+#define TASK_AMOUNT_MAX             (20U)//最大任务数量
+typedef uint16_t                    task_t;//任务控制块
+
+typedef struct 
+{
+    task_t taskSum;
+    task_t taskNow;
+    ScmTask_Info taskList[TASK_AMOUNT_MAX];
 }Sys_Task;//任务表
 
+#else
+    #error "Please select the correct task pattern!"
+#endif//#if(TASK_MODE_SELECT == xxx)
 
-int Task_create(char* TaskName ,task_t *task ,void *(*start_routine)(void *arg) ,void *par ,uint32_t period); 
-void Task_cancel(task_t* task);
+int Task_create(task_t* pTaskHandle, char* sTaskName, 
+                   void* (*pRoutine)(void*), void* par, uint32_t uPeriod);
+int Task_cancel(task_t* pTaskHandle);
 void Task_reckon_time(void);
 void  Task_scheduling (void);
 
 #endif
 
-
+/*-----------------------------------------------------------------------------
+ * 队列管理
+-----------------------------------------------------------------------------*/
 #ifdef ZDX_QUEUE
 
-#define QUEUE_DATA_LEN_MAX                  (128U)  //队列数据最大长度
-#define QUEUE_AMOUNT_MAX                    (32U)   //队列最大长度
+#define QUEUE_DATA_LEN_MAX              (128U) //队列数据最大长度
+#define QUEUE_AMOUNT_MAX                (32U)  //队列最大长度
 
 
 typedef struct
@@ -150,8 +142,9 @@ uint32_t Queue_get(ScmQueue_info *p_Queue, char** pData);
 
 #endif
 
-
-
+/*-----------------------------------------------------------------------------
+ * 环形缓存
+-----------------------------------------------------------------------------*/
 #ifdef ZDX_RING_REDIS
 
 typedef struct
@@ -165,7 +158,6 @@ typedef struct
     char* pValidTail;//已使用的缓冲区的尾地址
 }ScmRingBuff;
 
-
 int initRingbuffer(ScmRingBuff* pRing ,uint32_t size);
 int wirteRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t addLen);
 int readRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t len);
@@ -173,15 +165,19 @@ int releaseRingbuffer(ScmRingBuff* pRing);
 
 #endif
 
-
+/*-----------------------------------------------------------------------------
+ * 内存管理
+-----------------------------------------------------------------------------*/
 #ifdef ZDX_MEMORY
 
-void* aligned_malloc(size_t         required_bytes, size_t alignment);
+void* aligned_malloc(size_t required_bytes, size_t alignment);
 void aligned_free(void* r);
 
 #endif
 
-
+/*-----------------------------------------------------------------------------
+ * 时间转换
+-----------------------------------------------------------------------------*/
 #ifdef TIME_CONVERSION
 
 typedef struct
@@ -197,8 +193,8 @@ typedef struct
 
 uint32_t Time_strTimeToUtime(TimeStruct* pStrTime);
 void Time_uTimeToStrTime(uint32_t uTime, TimeStruct* pStrTime);
-int Time_checkFormatIsLegal(uint16 year, uint8 month, uint8 day , 
-                                  uint8 hour, uint8 minte, uint8 second);
+int Time_checkFormatIsLegal(uint16_t year, uint8_t month, uint8_t day, 
+                                  uint8_t hour, uint8_t minte, uint8_t second);
 #endif
 
 #endif

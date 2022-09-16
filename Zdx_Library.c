@@ -1,111 +1,143 @@
 /**
   ******************************************************************************
-  * @file    Library 常用库
+  * @file    Zdx_Library.h
+  * @brief   裸机下常用库
+  * @version V1.1
   * @author  周大侠
-  * @version V1.0
-  * @date    2020-8-15 14:58:34
+  * @email   zzzdaxia@qq.com
+  * @date    2022-09-16 10:52:04
   ******************************************************************************
-  * @attention
-
+  * @remark
+    Default encoding UTF-8
   ******************************************************************************
   */
 #include "Zdx_Library.h"
 
 
-
-//版本号  =  硬件版本号 + 软件版本号 + 阶段版本号  
-const char SysVersion[VERSION_NAME_MAX_SIZE] = HARDWARE_VERSION SOFTWARE_VERSION PHASE_VERSION;
-
-
-
 #ifdef ZDX_TASK
-
-volatile static Sys_Task Task_info_all;
-
 // 无操作系统下的分时调度
-/********************************************************
-  * @Description：   创建一个任务
-  * @Arguments    ：
-                TaskName        任务名称，指向ASCII字符串的指针
-                task            任务控制块指针
-                start_routine   任务函数
-                par             传递给任务函数的参数  
-                period          任务调度周期
-  * @Returns    ：
-                0   创建成功
-                -1  创建失败
-  * @author     : 周大侠     2020-8-15 15:17:49
- *******************************************************/
-int Task_create(char* TaskName ,task_t *task ,void *(*start_routine)(void *arg) ,void *par ,uint32_t period) 
-{  
-    uint32_t i = 0;
-    uint8_t Task_full_falg = TRUE;
 
-    if(NULL != task && NULL != start_routine)
+#if (TASK_MODE_SELECT == TASK_MODE_LINKED)
+
+volatile static Sys_Task Sys_TaskMange = {0, NULL, NULL};
+
+/********************************************************
+  * @Description：创建一个任务
+  * @Arguments  ：
+                pTaskHandle[IN] 任务控制块指针
+                sTaskName[IN]   任务名称，指向ASCII字符串的指针
+                pRoutine[IN]    任务函数
+                par[IN]         传递给任务函数的参数指针 
+                uPeriod[IN]     任务调度周期-毫秒
+  * @Returns    ：
+                0  创建成功
+                -1 创建失败，参数错误
+  * @author     : 周大侠  2022-09-15 15:32:04
+ *******************************************************/
+int Task_create(task_t* pTaskHandle, char* sTaskName, 
+    void* (*pRoutine)(void*), void* par, uint32_t uPeriod) 
+{      
+    if(NULL == pTaskHandle || NULL == pRoutine || NULL == sTaskName)
     {
-        for(i = 0;i < TASK_AMOUNT_MAX;i++)
-        {
-            if(NULL == Task_info_all.Task_queue[i].Task_func)
-            {
-                strncpy((char*)&Task_info_all.Task_queue[i].name,TaskName,TASK_NAME_LEN_MAX-1);
-                Task_info_all.Task_queue[i].timeOutCnt = period;
-                Task_info_all.Task_queue[i].Task_func = start_routine;
-                Task_info_all.Task_queue[i].par = par;
-                Task_info_all.Task_queue[i].status = TASK_IDLE;
-                *task = i;
-                Task_full_falg = FALSE; 
-                break;
-            }
-        } 
-        if(FALSE == Task_full_falg)
-        {
-            DEBUG_PRINT("Task :\"%s\" Creating  successful!\n",Task_info_all.Task_queue[i].name);
-            return 0;
-        } 
-        else
-            DEBUG_PRINT("Unable to add task,Task full!!\n");
+        DEBUG_OUT("Unable to add task,parameter error!\n");
+        return -1;
+    }
+    
+    pTaskHandle->taskInfo.uPeriod = uPeriod;
+    pTaskHandle->taskInfo.uCnt = 0;
+    pTaskHandle->taskInfo.Task_func = pRoutine;
+    pTaskHandle->taskInfo.par = par;
+    pTaskHandle->taskInfo.status = TASK_IDLE;
+    strncpy((char*)&pTaskHandle->taskInfo.name,sTaskName,TASK_NAME_LEN_MAX-1);
+    pTaskHandle->nextTask = NULL;
+
+    if(NULL != Sys_TaskMange.taskHead)
+    {
+        task_t* tailNode;
+        
+        tailNode = Sys_TaskMange.taskHead;
+        for(;NULL != tailNode->nextTask;tailNode = tailNode->nextTask);
+        tailNode->nextTask = pTaskHandle;
     }
     else
-        DEBUG_PRINT("Unable to add task,parameter error!!\n");
-        
-    return -1;
+    {
+        Sys_TaskMange.taskHead = pTaskHandle;
+    }
+    Sys_TaskMange.taskSum++;
+    
+    return 0;
 }
 
 /********************************************************
   * @Description：删除一个任务
-  * @Arguments    ：
-                task   任务控制块指针
+  * @Arguments  ：
+                pTaskHandle[IN]  要删除的任务的控制块指针,NULL为当前任务
   * @Returns    ：
-  * @author     : 周大侠         2020-8-15 15:23:37  
+                0：成功
+                -1 无任务
+                -2 未找到需要删除的任务
+  * @author     : 周大侠      2022-09-15 15:33:06
  *******************************************************/
-void Task_cancel(task_t* task) 
-{
-    if(NULL == task)//结束当前线程
-        memset((char*)&Task_info_all.Task_queue[Task_info_all.Task_now],00,sizeof(ScmTask_info));
+int Task_cancel(task_t* pTaskHandle) 
+{    
+    if(NULL == pTaskHandle)//结束当前任务
+    {
+        pTaskHandle = Sys_TaskMange.taskNow;
+    }
+    
+    if(NULL == Sys_TaskMange.taskHead || NULL == pTaskHandle || 1 > Sys_TaskMange.taskSum)
+    {
+        DEBUG_OUT("Unable to cancel task,parameter error!\n");
+        return -1;
+    }
+
+    if(Sys_TaskMange.taskHead == pTaskHandle)
+    {
+        Sys_TaskMange.taskHead = pTaskHandle->nextTask;
+        pTaskHandle->nextTask = NULL;
+        pTaskHandle->taskInfo.status = TASK_DEL;
+        Sys_TaskMange.taskSum--;
+    }
     else
-        memset((char*)&Task_info_all.Task_queue[*(task)],00,sizeof(ScmTask_info));
+    {
+        task_t* taskNode = Sys_TaskMange.taskHead;
+                
+        for(; NULL != taskNode->nextTask; taskNode = taskNode->nextTask)
+        {
+            if(taskNode->nextTask == pTaskHandle)
+            {
+                taskNode->nextTask = pTaskHandle->nextTask;
+                pTaskHandle->nextTask = NULL;
+                pTaskHandle->taskInfo.status = TASK_DEL;
+                Sys_TaskMange.taskSum--;
+                return 0;
+            }
+        }
+    }
+    DEBUG_OUT("Unable to find the task of cancel!\n");
+    return -2;
 }
 
 /********************************************************
   * @Description：任务计时
-  * @Arguments    ：
-  * @Returns    ：
-  * @author     : 周大侠    2020-8-15 15:54:49
-  * @remark     ：定时器1mS 执行一次
+  * @Arguments  ：无
+  * @Returns    ：无
+  * @author     : 周大侠 2022-09-14 16:27:02
+  * @remark     ：需要定时器1mS 调用一次
  *******************************************************/
 void Task_reckon_time(void)
 {
-    uint32_t i = 0;
+    task_t* taskNode = Sys_TaskMange.taskHead;
     
-    for(i = 0 ;i < TASK_AMOUNT_MAX;i++)
+    for(; NULL != taskNode; taskNode = taskNode->nextTask)
      {
-        if(TASK_IDLE == Task_info_all.Task_queue[i].status && NULL != Task_info_all.Task_queue[i].Task_func)
+        if(TASK_IDLE == taskNode->taskInfo.status)
         {
-            Task_info_all.Task_queue[i].timeOut++;
-            if(Task_info_all.Task_queue[i].timeOut >= Task_info_all.Task_queue[i].timeOutCnt)
+            taskNode->taskInfo.uCnt++;
+            if(taskNode->taskInfo.uCnt >= taskNode->taskInfo.uPeriod)
             {
-                Task_info_all.Task_queue[i].timeOut = 0;
-                Task_info_all.Task_queue[i].status = TASK_ready;
+                taskNode->taskInfo.uCnt = 0;
+                taskNode->taskInfo.status = TASK_READY;
             }
         }
      }
@@ -113,32 +145,159 @@ void Task_reckon_time(void)
 
 /********************************************************
   * @Description：任务调度
-  * @Arguments    ：
-                无
-  * @Returns    ：
-                无 
-  * @author     : 周大侠     
+  * @Arguments  ：无
+  * @Returns    ：无
+  * @author     : 周大侠     2022-09-14 16:27:11  
  *******************************************************/
 void  Task_scheduling (void)
 {
-    uint32_t i = 0;
+    task_t* taskNode = Sys_TaskMange.taskHead;
     
-    for(i = 0 ;i < TASK_AMOUNT_MAX;i++)
+    for(; NULL != taskNode; taskNode = taskNode->nextTask)
     {
-        if(TASK_ready == Task_info_all.Task_queue[i].status && NULL != Task_info_all.Task_queue[i].Task_func)
+        if(TASK_READY == taskNode->taskInfo.status && NULL != taskNode->taskInfo.Task_func)
         {
-            Task_info_all.Task_queue[i].status = TASK_Resume;
-            Task_info_all.Task_now = i;
-            Task_info_all.Task_queue[i].Task_func(Task_info_all.Task_queue[i].par);
-            if(TASK_Suspend != Task_info_all.Task_queue[Task_info_all.Task_now].status)
-            {
-                Task_info_all.Task_queue[i].status = TASK_IDLE;
-            }    
+            taskNode->taskInfo.status = TASK_RESUME;
+            Sys_TaskMange.taskNow = taskNode;
+            taskNode->taskInfo.Task_func(taskNode->taskInfo.par);
+            Sys_TaskMange.taskNow = NULL;
+            if(TASK_RESUME == taskNode->taskInfo.status)
+                taskNode->taskInfo.status = TASK_IDLE;
         }
     }
 }
 
-#endif
+#elif (TASK_MODE_SELECT == TASK_MODE_ARRAY)
+
+volatile static Sys_Task Sys_TaskMange = {0, 0,{0}};
+
+/********************************************************
+  * @Description：创建一个任务
+  * @Arguments  ：
+                pTaskHandle[OUT]任务控制块指针
+                sTaskName[IN]   任务名称，指向ASCII字符串的指针
+                pRoutine[IN]    任务函数
+                par[IN]         传递给任务函数的参数指针 
+                uPeriod[IN]     任务调度周期-毫秒
+  * @Returns    ：
+                0  创建成功
+                -1 创建失败，参数错误
+                -2 创建失败，任务池已满 
+  * @author     : 周大侠  2022-09-15 15:32:04
+ *******************************************************/
+
+int Task_create(task_t* pTaskHandle, char* sTaskName, 
+    void* (*pRoutine)(void*), void* par, uint32_t uPeriod) 
+{  
+    uint16_t i = 0;
+
+    if(NULL == pTaskHandle || NULL == pRoutine || NULL == sTaskName)
+    {
+        DEBUG_OUT("Unable to add task,parameter error!\n");
+        return -1;
+    }
+    
+    for(i = 0; i < TASK_AMOUNT_MAX; i++)
+    {
+        if(NULL == Sys_TaskMange.taskList[i].Task_func)
+        {
+            Sys_TaskMange.taskList[i].uPeriod = uPeriod;
+            Sys_TaskMange.taskList[i].uCnt = 0;
+            Sys_TaskMange.taskList[i].Task_func = pRoutine;
+            Sys_TaskMange.taskList[i].par = par;
+            Sys_TaskMange.taskList[i].status = TASK_IDLE;
+            strncpy((char*)&Sys_TaskMange.taskList[i].name,sTaskName,TASK_NAME_LEN_MAX-1);
+            *pTaskHandle = i;
+            Sys_TaskMange.taskSum++;
+            return 0;
+        }
+    } 
+
+    DEBUG_OUT("The task pool is full and the failure is created!\n");
+    return -2;
+}
+
+/********************************************************
+  * @Description：删除一个任务
+  * @Arguments  ：
+                pTaskHandle[IN]  要删除的任务的控制块指针,NULL为当前任务
+  * @Returns    ：
+                0：成功
+                -1 超出任务池
+  * @author     : 周大侠      2022-09-15 15:33:06
+ *******************************************************/
+
+int Task_cancel(task_t* pTaskHandle) 
+{
+    task_t delTask;
+
+    if(NULL == pTaskHandle)//结束当前线程
+        delTask = Sys_TaskMange.taskNow;
+    else
+        delTask = *pTaskHandle;
+
+    if(delTask < TASK_AMOUNT_MAX)
+    {
+        memset((char*)&Sys_TaskMange.taskList[delTask],00,sizeof(ScmTask_Info));
+        Sys_TaskMange.taskList[delTask].status = TASK_DEL;
+        Sys_TaskMange.taskSum--;
+        return 0;
+    }
+    else
+        return -1;
+}
+
+/********************************************************
+  * @Description：任务计时
+  * @Arguments  ：无
+  * @Returns    ：无
+  * @author     : 周大侠 2022-09-14 16:27:02
+  * @remark     ：需要定时器1mS 调用一次
+ *******************************************************/
+void Task_reckon_time(void)
+{
+    task_t i = 0;
+    
+    for(i = 0 ;i < TASK_AMOUNT_MAX;i++)
+     {
+        if(TASK_IDLE == Sys_TaskMange.taskList[i].status && NULL != Sys_TaskMange.taskList[i].Task_func)
+        {
+            Sys_TaskMange.taskList[i].uCnt++;
+            if(Sys_TaskMange.taskList[i].uCnt >= Sys_TaskMange.taskList[i].uPeriod)
+            {
+                Sys_TaskMange.taskList[i].uCnt = 0;
+                Sys_TaskMange.taskList[i].status = TASK_READY;
+            }
+        }
+     }
+}
+
+/********************************************************
+  * @Description：任务调度
+  * @Arguments  ：无
+  * @Returns    ：无
+  * @author     : 周大侠     2022-09-14 16:27:11  
+ *******************************************************/
+void  Task_scheduling (void)
+{
+    task_t i = 0;
+    
+    for(i = 0 ;i < TASK_AMOUNT_MAX;i++)
+    {
+        if(TASK_READY == Sys_TaskMange.taskList[i].status && NULL != Sys_TaskMange.taskList[i].Task_func)
+        {
+            Sys_TaskMange.taskNow = i;
+            Sys_TaskMange.taskList[i].status = TASK_RESUME;
+            Sys_TaskMange.taskList[i].Task_func(Sys_TaskMange.taskList[i].par);
+            if(TASK_RESUME == Sys_TaskMange.taskList[i].status)
+                Sys_TaskMange.taskList[i].status = TASK_IDLE;
+        }
+    }
+}
+#endif//#if(TASK_MODE_SELECT == xxx)
+
+#endif//#ifdef ZDX_TASK
+
 
 
 #ifdef ZDX_QUEUE
@@ -146,7 +305,7 @@ void  Task_scheduling (void)
 //队列管理
 /********************************************************
   * @Description：队列初始化
-  * @Arguments    ：
+  * @Arguments   ：
                 p_Queue:[IN]队列句柄
   * @Returns    ：
                 -1 fall
@@ -166,7 +325,7 @@ int Queue_init(ScmQueue_info *p_Queue)
 
 /********************************************************
   * @Description：队列-入队
-  * @Arguments    ：
+  * @Arguments  ：
                 p_Queue:[IN]队列句柄
                 pData:  [IN]:数据指针
                 uSize:  [IN]:数据大小
@@ -192,7 +351,7 @@ int Queue_add(ScmQueue_info *p_Queue, void* pData, uint32_t uSize)
     }
     else
     {
-        DEBUG_PRINT("Queue_add fill.\n");
+        DEBUG_OUT("Queue_add fill.\n");
         result = -1;
     } 
     //xSemaphoreGive( p_Queue->clock );    
@@ -202,7 +361,7 @@ int Queue_add(ScmQueue_info *p_Queue, void* pData, uint32_t uSize)
 
 /********************************************************
   * @Description：队列-出队
-  * @Arguments    ：
+  * @Arguments  ：
                 p_Queue:[IN]队列句柄
   * @Returns    ：
                 -1 fall
@@ -230,7 +389,7 @@ int Queue_del(ScmQueue_info *p_Queue)
     }
     else
     {
-        DEBUG_PRINT("FUN Queue_del err.\n");
+        DEBUG_OUT("FUN Queue_del err.\n");
         result = -1;
     } 
     //xSemaphoreGive( p_Queue->clock ); 
@@ -240,7 +399,7 @@ int Queue_del(ScmQueue_info *p_Queue)
 
 /********************************************************
   * @Description：队列-读取队列头成员
-  * @Arguments    ：
+  * @Arguments  ：
                 p_Queue: [IN]队列句柄
                 pData[OUT]: 存放头部成员数据的指针
   * @Returns    ：
@@ -279,7 +438,7 @@ uint32_t Queue_get(ScmQueue_info *p_Queue, char** pData)
 
 /********************************************************
   * @Description：   初始化环形缓冲区
-  * @Arguments    ：
+  * @Arguments  ：
                 pRing  环形缓冲区结构指针
                 size   设置环形缓冲区大小
   * @Returns    ：
@@ -311,7 +470,7 @@ int initRingbuffer(ScmRingBuff* pRing ,uint32_t size)
  
  /********************************************************
   * @Description：   向缓冲区写入数据
-  * @Arguments    ：
+  * @Arguments  ：
                 pRing   环形缓冲区结构指针
                 buffer   写入的数据指针
                 addLen   写入的数据长度
@@ -379,7 +538,7 @@ int wirteRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t addLen)
  
 /********************************************************
   * @Description：   向缓冲区读出数据
-  * @Arguments    ：
+  * @Arguments  ：
                 pRing   环形缓冲区结构指针
                 buffer  接收数据缓存
                 len     将要接收的数据长度
@@ -432,7 +591,7 @@ int readRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t len)
  
 /********************************************************
   * @Description：   释放环形缓冲区
-  * @Arguments    ：
+  * @Arguments  ：
                 pRing   环形缓冲区结构指针
   * @Returns    ：
                 0   成功
@@ -460,7 +619,7 @@ int releaseRingbuffer(ScmRingBuff* pRing)
 
 /********************************************************
   * @Description：字节对齐 malloc
-  * @Arguments    ：
+  * @Arguments  ：
                 required_bytes   要申请内存字节大小 (Byte)
                 alignment 字节对齐值 必须为2的n次方
   * @Returns    ：
@@ -470,30 +629,30 @@ int releaseRingbuffer(ScmRingBuff* pRing)
  *******************************************************/
 void* aligned_malloc(size_t required_bytes, size_t alignment)
 {
-    void* res = nullptr;
-    size_t   offset = alignment - 1 + sizeof(void*);//需要增加调整空间和存放实际地址的空间
+    void* res = NULL;
+    size_t offset = alignment - 1 + sizeof(void*);//需要增加调整空间和存放实际地址的空间
     void* p = (void*)malloc(required_bytes+offset);// p 为实际malloc的地址
-    
-    if (nullptr != p)
+
+    if (NULL != p)
     {
         res = (void*)(((size_t  )(p)+offset)&~(alignment-1));//a &~(b-1) 可以理解为b在a范围中的最大整数倍的值    ，b必须为2的n次方，如：100&~(8-1) = 96
         void** tmp = (void**)res;//tmp是一个存放指针数据的地址
         tmp[-1] = p;//地址的前一个位置存放指针p
-    }        
-     
+    }
+    
     return res;
 }
- 
+
 /********************************************************
   * @Description：字节对齐的 内存释放
-  * @Arguments    ：
+  * @Arguments  ：
                 r 要释放的地址值
   * @Returns    ：
   * @author     : 周大侠     2021-3-13 11:28:07
  *******************************************************/
 void aligned_free(void* r)
 {
-    if (r != nullptr)
+    if (r != NULL)
     {
         void** tmp = (void**)r;
         free(tmp[-1]);
@@ -506,7 +665,7 @@ void aligned_free(void* r)
 
 /********************************************************
   * @Description：闰年判断
-  * @Arguments    ：
+  * @Arguments  ：
                 year[IN] 判断的年份
   * @Returns    ：
                 0：平年
@@ -520,7 +679,7 @@ static uint8_t Time_checkLeapYear(uint16_t uYear)
 
 /********************************************************
   * @Description：时间格式转化成时间戳
-  * @Arguments    ：
+  * @Arguments  ：
                 pStrTime[IN] 时间结构体
   * @Returns    ：
                 从1970年起的时间戳
@@ -563,7 +722,7 @@ uint32_t Time_strTimeToUtime(TimeStruct* pStrTime)
 
 /********************************************************
   * @Description：时间戳转换成时间格式结构体
-  * @Arguments    ：
+  * @Arguments  ：
                 uTime[IN] 时间戳
                 pStrTime[OUT] 输出的时间结构体指针
   * @Returns    ：
@@ -639,7 +798,7 @@ void Time_uTimeToStrTime(uint32_t uTime, TimeStruct* pStrTime)
 
 /********************************************************
   * @Description：判断时间是否合法
-  * @Arguments    ：
+  * @Arguments  ：
                 year[IN]  年
                 month[IN] 月
                 day[IN]   日
@@ -651,8 +810,8 @@ void Time_uTimeToStrTime(uint32_t uTime, TimeStruct* pStrTime)
                 其它：非法
   * @author     : 周大侠     2022-8-1 20:19:29
  *******************************************************/
-int Time_checkFormatIsLegal(uint16 year, uint8 month, uint8 day , 
-                                  uint8 hour, uint8 minte, uint8 second)
+int Time_checkFormatIsLegal(uint16_t year, uint8_t month, uint8_t day, 
+                                  uint8_t hour, uint8_t minte, uint8_t second)
 {
     if ((year < 1970) || (year > 2100) || (month == 0) || (month > 12) || 
     (day == 0) || (hour > 24) || (minte > 59) || (second > 59)) //数值非法
