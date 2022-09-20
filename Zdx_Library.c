@@ -343,7 +343,7 @@ int Queue_add(ScmQueue_info *p_Queue, void* pData, uint32_t uSize)
     if(p_Queue->Queue_sum < QUEUE_AMOUNT_MAX && NULL != pData && uSize <= QUEUE_DATA_LEN_MAX)
     {
         point_to_end = p_Queue->Queue_new + p_Queue->Queue_sum;
-        point_to_end = (point_to_end >= QUEUE_AMOUNT_MAX) ? ( point_to_end -= QUEUE_AMOUNT_MAX) : (point_to_end);
+        point_to_end = (point_to_end >= QUEUE_AMOUNT_MAX) ? ( point_to_end - QUEUE_AMOUNT_MAX) : (point_to_end);
 
         memcpy(&p_Queue->List[point_to_end].data[0],(uint8_t*)pData,uSize);
         p_Queue->List[point_to_end].len = uSize;
@@ -413,7 +413,7 @@ uint32_t Queue_get(ScmQueue_info *p_Queue, char** pData)
     //xSemaphoreTake( p_Queue->clock, portMAX_DELAY ); 
     if(NULL != p_Queue && NULL != pData)
     {
-        if(0 < p_Queue->Queue_sum && NULL != p_Queue->List[p_Queue->Queue_new].data)
+        if(0 < p_Queue->Queue_sum)
         {
             *pData = (char*)p_Queue->List[p_Queue->Queue_new].data;
             len = p_Queue->List[p_Queue->Queue_new].len;
