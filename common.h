@@ -76,6 +76,11 @@ typedef unsigned char                       uint8_t;
                                             (((uint32_t)(_32t_) & 0x0000ff00) << 8) | \
                                             (((uint32_t)(_32t_) & 0x000000ff) << 24))
 
+//编译时检查 参数真时报错 
+#define BUILD_BUG_ON(condition)             ((void)sizeof(char[1 - 2*!!(condition)])) //非假报错不返回
+#define BUILD_BUG_ON_ZERO(e)                (sizeof(struct { int:-!!(e); })) //非假报错，假时返回0
+#define BUILD_BUG_ON_NULL(e)                ((void *)sizeof(struct { int:-!!(e); }))
+
 #define TEST_TASK_PERIOD                    (10U)
 #define TEST_TASK_DELAY_MS(_ms_)            (((_ms_) > TEST_TASK_PERIOD) ? ((_ms_) / TEST_TASK_PERIOD -1) : 0)
 
