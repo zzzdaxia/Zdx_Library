@@ -150,6 +150,27 @@ typedef unsigned char                       uint8_t;
  *  其他
  *****************************************************************************/
 
+/**
+ * 编译期断言：condition 为真时编译报错，为假时无任何影响
+ * 用途：在编译阶段拦截非法配置，零运行时开销
+ * 示例：BUILD_BUG_ON(sizeof(MyStruct) != 16);  // 结构体大小不是16字节则报错
+ */
+#define BUILD_BUG_ON(condition)     ((void)sizeof(char[1 - 2*!!(condition)]))
+
+/**
+ * 编译期断言：e 为真时编译报错，e 为假时值为 0（整数）
+ * 与 BUILD_BUG_ON 的区别：可以内嵌到表达式中使用，因为有返回值 0
+ * 示例：int x = BUILD_BUG_ON_ZERO(N < 0) + N;  // N<0 则报错，否则 x = 0 + N
+ */
+#define BUILD_BUG_ON_ZERO(e)        (sizeof(struct { int:-!!(e); }))
+
+/**
+ * 编译期断言：e 为真时编译报错，e 为假时值为 NULL（void* 指针）
+ * 与 BUILD_BUG_ON_ZERO 的区别：返回值为指针类型，可内嵌到需要指针的表达式中
+ * 示例：void *p = BUILD_BUG_ON_NULL(N < 0);  // N<0 则报错，否则 p = NULL
+ */
+#define BUILD_BUG_ON_NULL(e)        ((void *)sizeof(struct { int:-!!(e); }))
+
 #define SEC_TO_MS(_sec_)            ((_sec_) * 1000U)
 #define MIN_TO_MS(_min_)            ((_min_) * 60U * 1000U)
 #define HOUR_TO_MS(_hour_)          ((_hour_) * 60U * 60U * 1000U)
@@ -183,4 +204,3 @@ typedef unsigned char                       uint8_t;
 #define TEST_TASK_DELAY_MS(_ms_)    (((_ms_) > TEST_TASK_PERIOD) ? ((_ms_) / TEST_TASK_PERIOD - 1) : 0)
 
 #endif
-
