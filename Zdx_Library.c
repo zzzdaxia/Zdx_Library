@@ -2,10 +2,10 @@
   ******************************************************************************
   * @file    Zdx_Library.h
   * @brief   裸机下常用库
-  * @version V1.1
+  * @version V1.2
   * @author  周大侠
   * @email   zzzdaxia@qq.com
-  * @date    2022-09-16 10:52:04
+  * @date    2026-04-29 23:46:34
   ******************************************************************************
   * @remark
     Default encoding UTF-8
@@ -13,9 +13,7 @@
   */
 #include "Zdx_Library.h"
 
-
-#ifdef ZDX_TASK
-// 无操作系统下的分时调度
+#ifdef ZDX_TASK // 无操作系统下的分时调度
 
 #if (TASK_MODE_SELECT == TASK_MODE_LINKED)
 
@@ -27,36 +25,37 @@ volatile static Sys_Task Sys_TaskMange = {0, NULL, NULL};
                 pTaskHandle[IN] 任务控制块指针
                 sTaskName[IN]   任务名称，指向ASCII字符串的指针
                 pRoutine[IN]    任务函数
-                par[IN]         传递给任务函数的参数指针 
+                par[IN]         传递给任务函数的参数指针
                 uPeriod[IN]     任务调度周期-毫秒
   * @Returns    ：
                 0  创建成功
                 -1 创建失败，参数错误
   * @author     : 周大侠  2022-09-15 15:32:04
  *******************************************************/
-int Task_create(task_t* pTaskHandle, char* sTaskName, 
-    void* (*pRoutine)(void*), void* par, uint32_t uPeriod) 
-{      
-    if(NULL == pTaskHandle || NULL == pRoutine || NULL == sTaskName)
+int Task_create(task_t *pTaskHandle, char *sTaskName,
+                void *(*pRoutine)(void *), void *par, uint32_t uPeriod)
+{
+    if (NULL == pTaskHandle || NULL == pRoutine || NULL == sTaskName)
     {
         DEBUG_OUT("Unable to add task,parameter error!\n");
         return -1;
     }
-    
+
     pTaskHandle->taskInfo.uPeriod = uPeriod;
     pTaskHandle->taskInfo.uCnt = 0;
     pTaskHandle->taskInfo.Task_func = pRoutine;
     pTaskHandle->taskInfo.par = par;
     pTaskHandle->taskInfo.status = TASK_IDLE;
-    strncpy((char*)&pTaskHandle->taskInfo.name,sTaskName,TASK_NAME_LEN_MAX-1);
+    strncpy((char *)&pTaskHandle->taskInfo.name, sTaskName, TASK_NAME_LEN_MAX - 1);
     pTaskHandle->nextTask = NULL;
 
-    if(NULL != Sys_TaskMange.taskHead)
+    if (NULL != Sys_TaskMange.taskHead)
     {
-        task_t* tailNode;
-        
+        task_t *tailNode;
+
         tailNode = Sys_TaskMange.taskHead;
-        for(;NULL != tailNode->nextTask;tailNode = tailNode->nextTask);
+        for (; NULL != tailNode->nextTask; tailNode = tailNode->nextTask)
+            ;
         tailNode->nextTask = pTaskHandle;
     }
     else
@@ -64,7 +63,7 @@ int Task_create(task_t* pTaskHandle, char* sTaskName,
         Sys_TaskMange.taskHead = pTaskHandle;
     }
     Sys_TaskMange.taskSum++;
-    
+
     return 0;
 }
 
@@ -78,33 +77,34 @@ int Task_create(task_t* pTaskHandle, char* sTaskName,
                 -2 未找到需要删除的任务
   * @author     : 周大侠      2022-09-15 15:33:06
  *******************************************************/
-int Task_cancel(task_t* pTaskHandle) 
-{    
-    if(NULL == pTaskHandle)//结束当前任务
+int Task_cancel(task_t *pTaskHandle)
+{
+    if (NULL == pTaskHandle) // 结束当前任务
     {
         pTaskHandle = Sys_TaskMange.taskNow;
     }
-    
-    if(NULL == Sys_TaskMange.taskHead || NULL == pTaskHandle || 1 > Sys_TaskMange.taskSum)
+
+    if (NULL == Sys_TaskMange.taskHead || NULL == pTaskHandle || 1 > Sys_TaskMange.taskSum)
     {
         DEBUG_OUT("Unable to cancel task,parameter error!\n");
         return -1;
     }
 
-    if(Sys_TaskMange.taskHead == pTaskHandle)
+    if (Sys_TaskMange.taskHead == pTaskHandle)
     {
         Sys_TaskMange.taskHead = pTaskHandle->nextTask;
         pTaskHandle->nextTask = NULL;
         pTaskHandle->taskInfo.status = TASK_DEL;
         Sys_TaskMange.taskSum--;
+        return 0;
     }
     else
     {
-        task_t* taskNode = Sys_TaskMange.taskHead;
-                
-        for(; NULL != taskNode->nextTask; taskNode = taskNode->nextTask)
+        task_t *taskNode = Sys_TaskMange.taskHead;
+
+        for (; NULL != taskNode->nextTask; taskNode = taskNode->nextTask)
         {
-            if(taskNode->nextTask == pTaskHandle)
+            if (taskNode->nextTask == pTaskHandle)
             {
                 taskNode->nextTask = pTaskHandle->nextTask;
                 pTaskHandle->nextTask = NULL;
@@ -119,49 +119,49 @@ int Task_cancel(task_t* pTaskHandle)
 }
 
 /********************************************************
-  * @Description：任务计时
-  * @Arguments  ：无
-  * @Returns    ：无
-  * @author     : 周大侠 2022-09-14 16:27:02
-  * @remark     ：需要定时器1mS 调用一次
+ * @Description：任务计时
+ * @Arguments  ：无
+ * @Returns    ：无
+ * @author     : 周大侠 2022-09-14 16:27:02
+ * @remark     ：需要定时器1mS 调用一次
  *******************************************************/
-void Task_reckon_time(void)
+void Task_reckonTime(void)
 {
-    task_t* taskNode = Sys_TaskMange.taskHead;
-    
-    for(; NULL != taskNode; taskNode = taskNode->nextTask)
-     {
-        if(TASK_IDLE == taskNode->taskInfo.status)
+    task_t *taskNode = Sys_TaskMange.taskHead;
+
+    for (; NULL != taskNode; taskNode = taskNode->nextTask)
+    {
+        if (TASK_IDLE == taskNode->taskInfo.status)
         {
             taskNode->taskInfo.uCnt++;
-            if(taskNode->taskInfo.uCnt >= taskNode->taskInfo.uPeriod)
+            if (taskNode->taskInfo.uCnt >= taskNode->taskInfo.uPeriod)
             {
                 taskNode->taskInfo.uCnt = 0;
                 taskNode->taskInfo.status = TASK_READY;
             }
         }
-     }
+    }
 }
 
 /********************************************************
-  * @Description：任务调度
-  * @Arguments  ：无
-  * @Returns    ：无
-  * @author     : 周大侠     2022-09-14 16:27:11  
+ * @Description：任务调度
+ * @Arguments  ：无
+ * @Returns    ：无
+ * @author     : 周大侠     2022-09-14 16:27:11
  *******************************************************/
-void  Task_scheduling (void)
+void Task_scheduling(void)
 {
-    task_t* taskNode = Sys_TaskMange.taskHead;
-    
-    for(; NULL != taskNode; taskNode = taskNode->nextTask)
+    task_t *taskNode = Sys_TaskMange.taskHead;
+
+    for (; NULL != taskNode; taskNode = taskNode->nextTask)
     {
-        if(TASK_READY == taskNode->taskInfo.status && NULL != taskNode->taskInfo.Task_func)
+        if (TASK_READY == taskNode->taskInfo.status && NULL != taskNode->taskInfo.Task_func)
         {
             taskNode->taskInfo.status = TASK_RESUME;
             Sys_TaskMange.taskNow = taskNode;
             taskNode->taskInfo.Task_func(taskNode->taskInfo.par);
             Sys_TaskMange.taskNow = NULL;
-            if(TASK_RESUME == taskNode->taskInfo.status)
+            if (TASK_RESUME == taskNode->taskInfo.status)
                 taskNode->taskInfo.status = TASK_IDLE;
         }
     }
@@ -169,7 +169,7 @@ void  Task_scheduling (void)
 
 #elif (TASK_MODE_SELECT == TASK_MODE_ARRAY)
 
-volatile static Sys_Task Sys_TaskMange = {0, 0,{0}};
+volatile static Sys_Task Sys_TaskMange = {0, 0, {0}};
 
 /********************************************************
   * @Description：创建一个任务
@@ -177,41 +177,41 @@ volatile static Sys_Task Sys_TaskMange = {0, 0,{0}};
                 pTaskHandle[OUT]任务控制块指针
                 sTaskName[IN]   任务名称，指向ASCII字符串的指针
                 pRoutine[IN]    任务函数
-                par[IN]         传递给任务函数的参数指针 
+                par[IN]         传递给任务函数的参数指针
                 uPeriod[IN]     任务调度周期-毫秒
   * @Returns    ：
                 0  创建成功
                 -1 创建失败，参数错误
-                -2 创建失败，任务池已满 
+                -2 创建失败，任务池已满
   * @author     : 周大侠  2022-09-15 15:32:04
  *******************************************************/
 
-int Task_create(task_t* pTaskHandle, char* sTaskName, 
-    void* (*pRoutine)(void*), void* par, uint32_t uPeriod) 
-{  
+int Task_create(task_t *pTaskHandle, char *sTaskName,
+                void *(*pRoutine)(void *), void *par, uint32_t uPeriod)
+{
     uint16_t i = 0;
 
-    if(NULL == pTaskHandle || NULL == pRoutine || NULL == sTaskName)
+    if (NULL == pTaskHandle || NULL == pRoutine || NULL == sTaskName)
     {
         DEBUG_OUT("Unable to add task,parameter error!\n");
         return -1;
     }
-    
-    for(i = 0; i < TASK_AMOUNT_MAX; i++)
+
+    for (i = 0; i < TASK_AMOUNT_MAX; i++)
     {
-        if(NULL == Sys_TaskMange.taskList[i].Task_func)
+        if (NULL == Sys_TaskMange.taskList[i].Task_func)
         {
             Sys_TaskMange.taskList[i].uPeriod = uPeriod;
             Sys_TaskMange.taskList[i].uCnt = 0;
             Sys_TaskMange.taskList[i].Task_func = pRoutine;
             Sys_TaskMange.taskList[i].par = par;
             Sys_TaskMange.taskList[i].status = TASK_IDLE;
-            strncpy((char*)&Sys_TaskMange.taskList[i].name,sTaskName,TASK_NAME_LEN_MAX-1);
+            strncpy((char *)&Sys_TaskMange.taskList[i].name, sTaskName, TASK_NAME_LEN_MAX - 1);
             *pTaskHandle = i;
             Sys_TaskMange.taskSum++;
             return 0;
         }
-    } 
+    }
 
     DEBUG_OUT("The task pool is full and the failure is created!\n");
     return -2;
@@ -227,18 +227,18 @@ int Task_create(task_t* pTaskHandle, char* sTaskName,
   * @author     : 周大侠      2022-09-15 15:33:06
  *******************************************************/
 
-int Task_cancel(task_t* pTaskHandle) 
+int Task_cancel(task_t *pTaskHandle)
 {
     task_t delTask;
 
-    if(NULL == pTaskHandle)//结束当前线程
+    if (NULL == pTaskHandle) // 结束当前线程
         delTask = Sys_TaskMange.taskNow;
     else
         delTask = *pTaskHandle;
 
-    if(delTask < TASK_AMOUNT_MAX)
+    if (delTask < TASK_AMOUNT_MAX)
     {
-        memset((char*)&Sys_TaskMange.taskList[delTask],00,sizeof(ScmTask_Info));
+        memset((char *)&Sys_TaskMange.taskList[delTask], 00, sizeof(ScmTask_Info));
         Sys_TaskMange.taskList[delTask].status = TASK_DEL;
         Sys_TaskMange.taskSum--;
         return 0;
@@ -248,61 +248,59 @@ int Task_cancel(task_t* pTaskHandle)
 }
 
 /********************************************************
-  * @Description：任务计时
-  * @Arguments  ：无
-  * @Returns    ：无
-  * @author     : 周大侠 2022-09-14 16:27:02
-  * @remark     ：需要定时器1mS 调用一次
+ * @Description：任务计时
+ * @Arguments  ：无
+ * @Returns    ：无
+ * @author     : 周大侠 2022-09-14 16:27:02
+ * @remark     ：需要定时器1mS 调用一次
  *******************************************************/
-void Task_reckon_time(void)
+void Task_reckonTime(void)
 {
     task_t i = 0;
-    
-    for(i = 0 ;i < TASK_AMOUNT_MAX;i++)
-     {
-        if(TASK_IDLE == Sys_TaskMange.taskList[i].status && NULL != Sys_TaskMange.taskList[i].Task_func)
+
+    for (i = 0; i < TASK_AMOUNT_MAX; i++)
+    {
+        if (TASK_IDLE == Sys_TaskMange.taskList[i].status && NULL != Sys_TaskMange.taskList[i].Task_func)
         {
             Sys_TaskMange.taskList[i].uCnt++;
-            if(Sys_TaskMange.taskList[i].uCnt >= Sys_TaskMange.taskList[i].uPeriod)
+            if (Sys_TaskMange.taskList[i].uCnt >= Sys_TaskMange.taskList[i].uPeriod)
             {
                 Sys_TaskMange.taskList[i].uCnt = 0;
                 Sys_TaskMange.taskList[i].status = TASK_READY;
             }
         }
-     }
+    }
 }
 
 /********************************************************
-  * @Description：任务调度
-  * @Arguments  ：无
-  * @Returns    ：无
-  * @author     : 周大侠     2022-09-14 16:27:11  
+ * @Description：任务调度
+ * @Arguments  ：无
+ * @Returns    ：无
+ * @author     : 周大侠     2022-09-14 16:27:11
  *******************************************************/
-void  Task_scheduling (void)
+void Task_scheduling(void)
 {
     task_t i = 0;
-    
-    for(i = 0 ;i < TASK_AMOUNT_MAX;i++)
+
+    for (i = 0; i < TASK_AMOUNT_MAX; i++)
     {
-        if(TASK_READY == Sys_TaskMange.taskList[i].status && NULL != Sys_TaskMange.taskList[i].Task_func)
+        if (TASK_READY == Sys_TaskMange.taskList[i].status && NULL != Sys_TaskMange.taskList[i].Task_func)
         {
             Sys_TaskMange.taskNow = i;
             Sys_TaskMange.taskList[i].status = TASK_RESUME;
             Sys_TaskMange.taskList[i].Task_func(Sys_TaskMange.taskList[i].par);
-            if(TASK_RESUME == Sys_TaskMange.taskList[i].status)
+            if (TASK_RESUME == Sys_TaskMange.taskList[i].status)
                 Sys_TaskMange.taskList[i].status = TASK_IDLE;
         }
     }
 }
-#endif//#if(TASK_MODE_SELECT == xxx)
+#endif // #if(TASK_MODE_SELECT == xxx)
 
-#endif//#ifdef ZDX_TASK
-
-
+#endif // #ifdef ZDX_TASK
 
 #ifdef ZDX_QUEUE
 
-//队列管理
+// 队列管理
 /********************************************************
   * @Description：队列初始化
   * @Arguments   ：
@@ -310,14 +308,14 @@ void  Task_scheduling (void)
   * @Returns    ：
                 -1 fall
                 0 succeed
-  * @author     : 周大侠                   
+  * @author     : 周大侠
  *******************************************************/
 int Queue_init(ScmQueue_info *p_Queue)
 {
-    if(NULL != p_Queue)
+    if (NULL != p_Queue)
     {
-        memset((char*)p_Queue,00,sizeof(ScmQueue_info));
-        //p_Queue->clock  init
+        memset((char *)p_Queue, 00, sizeof(ScmQueue_info));
+        // p_Queue->clock  init
         return 0;
     }
     return -1;
@@ -332,30 +330,29 @@ int Queue_init(ScmQueue_info *p_Queue)
   * @Returns    ：
                 -1 fall
                 0 succeed
-  * @author     : 周大侠                   
+  * @author     : 周大侠
  *******************************************************/
-int Queue_add(ScmQueue_info *p_Queue, void* pData, uint32_t uSize)
+int Queue_add(ScmQueue_info *p_Queue, void *pData, uint32_t uSize)
 {
     uint32_t point_to_end = 0;
     int result = 0;
-    
-    //xSemaphoreTake( p_Queue->clock, portMAX_DELAY );  
-    if(p_Queue->Queue_sum < QUEUE_AMOUNT_MAX && NULL != pData && uSize <= QUEUE_DATA_LEN_MAX)
+
+    // xSemaphoreTake( p_Queue->clock, portMAX_DELAY );
+    if (NULL != p_Queue && NULL != pData && p_Queue->Queue_sum < QUEUE_AMOUNT_MAX  && uSize <= QUEUE_DATA_LEN_MAX)
     {
         point_to_end = p_Queue->Queue_new + p_Queue->Queue_sum;
-        point_to_end = (point_to_end >= QUEUE_AMOUNT_MAX) ? ( point_to_end - QUEUE_AMOUNT_MAX) : (point_to_end);
+        point_to_end = (point_to_end >= QUEUE_AMOUNT_MAX) ? (point_to_end - QUEUE_AMOUNT_MAX) : (point_to_end);
 
-        memcpy(&p_Queue->List[point_to_end].data[0],(uint8_t*)pData,uSize);
+        memcpy(&p_Queue->List[point_to_end].data[0], (uint8_t *)pData, uSize);
         p_Queue->List[point_to_end].len = uSize;
-        p_Queue->Queue_sum++;     
+        p_Queue->Queue_sum++;
     }
     else
     {
         DEBUG_OUT("Queue_add fill.\n");
         result = -1;
-    } 
-    //xSemaphoreGive( p_Queue->clock );    
-
+    }
+    // xSemaphoreGive( p_Queue->clock );
     return result;
 }
 
@@ -365,35 +362,35 @@ int Queue_add(ScmQueue_info *p_Queue, void* pData, uint32_t uSize)
                 p_Queue:[IN]队列句柄
   * @Returns    ：
                 -1 fall
-                0 succeed   
-  * @author     : 周大侠    
+                0 succeed
+  * @author     : 周大侠
   * @notice     : 移除一个头部成员
  *******************************************************/
 int Queue_del(ScmQueue_info *p_Queue)
 {
-    uint32_t point_to_head = p_Queue->Queue_new;
+    uint32_t point_to_head;
     int result = 0;
 
-    //xSemaphoreTake( p_Queue->clock, portMAX_DELAY );  
-    if(p_Queue->Queue_new < QUEUE_AMOUNT_MAX && p_Queue->Queue_sum >= 1)
+    // xSemaphoreTake( p_Queue->clock, portMAX_DELAY );
+    if (NULL != p_Queue && p_Queue->Queue_new < QUEUE_AMOUNT_MAX && p_Queue->Queue_sum >= 1)
     {
-        //memset(&p_Queue->List[p_Queue->Queue_new].data[0],00,QUEUE_DATA_LEN_MAX);
+        point_to_head = p_Queue->Queue_new;
         p_Queue->List[p_Queue->Queue_new].len = 0;
         p_Queue->Queue_sum--;
-        if(p_Queue->Queue_sum > 0)
+        if (p_Queue->Queue_sum > 0)
         {
             point_to_head++;
-            (point_to_head >= QUEUE_AMOUNT_MAX) ? ( point_to_head = 0) : (point_to_head);
+            (point_to_head >= QUEUE_AMOUNT_MAX) ? (point_to_head = 0) : (point_to_head);
             p_Queue->Queue_new = point_to_head;
-        }  
+        }
     }
     else
     {
         DEBUG_OUT("FUN Queue_del err.\n");
         result = -1;
-    } 
-    //xSemaphoreGive( p_Queue->clock ); 
-    
+    }
+    // xSemaphoreGive( p_Queue->clock );
+
     return result;
 }
 
@@ -404,18 +401,18 @@ int Queue_del(ScmQueue_info *p_Queue)
                 pData[OUT]: 存放头部成员数据的指针
   * @Returns    ：
                 [OUT]数据大小
-  * @author     : 周大侠                   
+  * @author     : 周大侠
  *******************************************************/
-uint32_t Queue_get(ScmQueue_info *p_Queue, char** pData)
+uint32_t Queue_get(ScmQueue_info *p_Queue, char **pData)
 {
     uint32_t len = 0;
-    
-    //xSemaphoreTake( p_Queue->clock, portMAX_DELAY ); 
-    if(NULL != p_Queue && NULL != pData)
+
+    // xSemaphoreTake( p_Queue->clock, portMAX_DELAY );
+    if (NULL != p_Queue && NULL != pData)
     {
-        if(0 < p_Queue->Queue_sum)
+        if (0 < p_Queue->Queue_sum)
         {
-            *pData = (char*)p_Queue->List[p_Queue->Queue_new].data;
+            *pData = (char *)p_Queue->List[p_Queue->Queue_new].data;
             len = p_Queue->List[p_Queue->Queue_new].len;
         }
         else
@@ -424,92 +421,91 @@ uint32_t Queue_get(ScmQueue_info *p_Queue, char** pData)
             len = 0;
         }
     }
-    //xSemaphoreGive( p_Queue->clock )
-    
+    // xSemaphoreGive( p_Queue->clock );
     return len;
 }
 
-
 #endif
- 
- 
+
 #ifdef ZDX_RING_REDIS
-//环形缓存
+// 环形缓存
 
 /********************************************************
-  * @Description：   初始化环形缓冲区
+  * @Description：初始化环形缓冲区
   * @Arguments  ：
-                pRing  环形缓冲区结构指针
-                size   设置环形缓冲区大小
+                pRing[IN]  环形缓冲区结构指针
+                size[IN]   缓冲区大小（字节）
   * @Returns    ：
                 0   成功
-                -1  失败
+                -1  失败（参数为NULL或已初始化）
+  * @author     : 周大侠
  *******************************************************/
-int initRingbuffer(ScmRingBuff* pRing ,uint32_t size)
+int Ring_init(ScmRingBuff *pRing, uint32_t size)
 {
-    int  result = -1;
- 
-    if(NULL != pRing)
+    int result = -1;
+
+    if (NULL != pRing)
     {
-        if(pRing->pHead == NULL)
+        if (pRing->pHead == NULL)
         {
-            pRing->pHead = (char*) malloc(size);
-            if(NULL != pRing->pHead)
+            pRing->pHead = (char *)malloc(size);
+            if (NULL != pRing->pHead)
             {
                 pRing->pValid = pRing->pValidTail = pRing->pHead;
                 pRing->pTail = pRing->pHead + size;
                 pRing->validLen = 0;
-                pRing->RingSize = size;
-                //pRing->clock  init
+                pRing->ringSize = size;
+                // pRing->clock  init
                 result = 0;
             }
         }
     }
     return result;
 }
- 
- /********************************************************
-  * @Description：   向缓冲区写入数据
+
+/********************************************************
+  * @Description：向环形缓冲区写入数据（缓冲区满时覆盖最旧数据）
   * @Arguments  ：
-                pRing   环形缓冲区结构指针
-                buffer   写入的数据指针
-                addLen   写入的数据长度
+                pRing[IN]    环形缓冲区结构指针
+                buffer[IN]   写入的数据指针
+                addLen[IN]   写入的数据长度（字节）
   * @Returns    ：
                 0   成功
-                -1:缓冲区没有初始化
-                -2:写入长度过大
+                -1  失败（参数为NULL或缓冲区未初始化）
+                -2  失败（写入长度超过缓冲区总大小）
+  * @author     : 周大侠
  *******************************************************/
-int wirteRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t addLen)
+int Ring_write(ScmRingBuff *pRing, char *buffer, uint32_t addLen)
 {
-    int  result = -1;
-    
-    if(NULL != pRing  && NULL != buffer)
+    int result = -1;
+
+    if (NULL != pRing && NULL != buffer)
     {
-        //xSemaphoreTake( pRing->clock, portMAX_DELAY ); 
-        if(NULL != pRing->pHead && NULL != pRing->pTail && NULL != pRing->pValid && NULL != pRing->pValidTail)
+        // xSemaphoreTake( pRing->clock, portMAX_DELAY );
+        if (NULL != pRing->pHead && NULL != pRing->pTail && NULL != pRing->pValid && NULL != pRing->pValidTail)
         {
-            if(addLen <= pRing->RingSize)
+            if (addLen <= pRing->ringSize)
             {
-                //将要存入的数据copy到pValidTail处
-                if(pRing->pValidTail + addLen > pRing->pTail)//需要分成两段copy
+                // 将要存入的数据copy到pValidTail处
+                if (pRing->pValidTail + addLen > pRing->pTail) // 需要分成两段copy
                 {
                     uint32_t len1 = pRing->pTail - pRing->pValidTail;
                     uint32_t len2 = addLen - len1;
-                    memcpy( pRing->pValidTail, buffer, len1);
-                    memcpy( pRing->pHead, buffer + len1, len2);
-                    pRing->pValidTail = pRing->pHead + len2;//新的有效数据区结尾指针
+                    memcpy(pRing->pValidTail, buffer, len1);
+                    memcpy(pRing->pHead, buffer + len1, len2);
+                    pRing->pValidTail = pRing->pHead + len2; // 新的有效数据区结尾指针
                 }
                 else
                 {
-                    memcpy( pRing->pValidTail, buffer, addLen);
-                    pRing->pValidTail += addLen;//新的有效数据区结尾指针
+                    memcpy(pRing->pValidTail, buffer, addLen);
+                    pRing->pValidTail += addLen; // 新的有效数据区结尾指针
                 }
-     
-                //需重新计算已使用区的起始位置
-                if(pRing->validLen + addLen > pRing->RingSize)
+
+                // 需重新计算已使用区的起始位置
+                if (pRing->validLen + addLen > pRing->ringSize)
                 {
-                    int moveLen = pRing->validLen + addLen - pRing->RingSize;//有效指针将要移动的长度
-                    if(pRing->pValid + moveLen > pRing->pTail)//需要分成两段计算
+                    int moveLen = pRing->validLen + addLen - pRing->ringSize; // 有效指针将要移动的长度
+                    if (pRing->pValid + moveLen > pRing->pTail)               // 需要分成两段计算
                     {
                         uint32_t len1 = pRing->pTail - pRing->pValid;
                         uint32_t len2 = moveLen - len1;
@@ -519,101 +515,101 @@ int wirteRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t addLen)
                     {
                         pRing->pValid = pRing->pValid + moveLen;
                     }
-                    
-                    pRing->validLen = pRing->RingSize;
+
+                    pRing->validLen = pRing->ringSize;
                 }
                 else
                 {
                     pRing->validLen += addLen;
                 }
-                result = 0;    
+                result = 0;
             }
             else
                 result = -2;
         }
-        //xSemaphoreGive( pRing->clock );    
+        // xSemaphoreGive( pRing->clock );
     }
     return result;
 }
- 
+
 /********************************************************
-  * @Description：   向缓冲区读出数据
+  * @Description：从环形缓冲区读出数据（读后数据被消耗）
   * @Arguments  ：
-                pRing   环形缓冲区结构指针
-                buffer  接收数据缓存
-                len     将要接收的数据长度
+                pRing[IN]    环形缓冲区结构指针
+                buffer[OUT]  接收数据的缓存指针
+                len[IN]      期望读取的数据长度（字节），超出有效数据长度时截断
   * @Returns    ：
-                大于0  实际读取的长度
-                -1:缓冲区没有初始化
+                >=0  实际读取的字节数
+                -1   失败（参数为NULL或缓冲区未初始化）
+  * @author     : 周大侠
  *******************************************************/
-int readRingbuffer(ScmRingBuff* pRing,char* buffer,uint32_t len)
+int Ring_read(ScmRingBuff *pRing, char *buffer, uint32_t len)
 {
-    int  result = -1;
-    
-    if(NULL != pRing  && NULL != buffer)
-    {    
-        //xSemaphoreTake( pRing->clock, portMAX_DELAY ); 
-        if(NULL != pRing->pHead && NULL != pRing->pTail && NULL != pRing->pValid && NULL != pRing->pValidTail)
+    int result = -1;
+
+    if (NULL != pRing && NULL != buffer)
+    {
+        // xSemaphoreTake( pRing->clock, portMAX_DELAY );
+        if (NULL != pRing->pHead && NULL != pRing->pTail && NULL != pRing->pValid && NULL != pRing->pValidTail)
         {
-            if(0 < pRing->validLen)
+            if (0 < pRing->validLen)
             {
-                if( len >= pRing->validLen) 
+                if (len >= pRing->validLen)
                     len = pRing->validLen;
-                    
-                if(pRing->pValid + len > pRing->pTail)//需要分成两段copy
+
+                if (pRing->pValid + len > pRing->pTail) // 需要分成两段copy
                 {
                     uint32_t len1 = pRing->pTail - pRing->pValid;
                     uint32_t len2 = len - len1;
-                    memcpy( buffer, pRing->pValid, len1);//第一段
-                    memcpy( buffer+len1, pRing->pHead, len2);//第二段，绕到整个存储区的开头
-     
-                    //注释此语句，则读取的数据不会被清除
-                    pRing->pValid = pRing->pHead + len2;//更新已使用缓冲区的起始
+                    memcpy(buffer, pRing->pValid, len1);       // 第一段
+                    memcpy(buffer + len1, pRing->pHead, len2); // 第二段，绕到整个存储区的开头
+
+                    // 注释此语句，则读取的数据不会被清除
+                    pRing->pValid = pRing->pHead + len2; // 更新已使用缓冲区的起始
                 }
                 else
                 {
-                    memcpy( buffer, pRing->pValid, len);
-                    //注释此语句，则读取的数据不会被清除
-                    pRing->pValid = pRing->pValid +len;//更新已使用缓冲区的起始
+                    memcpy(buffer, pRing->pValid, len);
+                    // 注释此语句，则读取的数据不会被清除
+                    pRing->pValid = pRing->pValid + len; // 更新已使用缓冲区的起始
                 }
-                //注释此语句，则读取的数据不会被清除
-                pRing->validLen -= len;//更新已使用缓冲区的长度
+                // 注释此语句，则读取的数据不会被清除
+                pRing->validLen -= len; // 更新已使用缓冲区的长度
                 result = len;
             }
             else
                 result = 0;
         }
-        //xSemaphoreGive( pRing->clock );    
-        
-    }    
+        // xSemaphoreGive( pRing->clock );
+    }
     return result;
 }
- 
+
 /********************************************************
-  * @Description：   释放环形缓冲区
+  * @Description：释放环形缓冲区（free内存并清零结构体）
   * @Arguments  ：
-                pRing   环形缓冲区结构指针
+                pRing[IN]  环形缓冲区结构指针
   * @Returns    ：
                 0   成功
-                -1  失败
+                -1  失败（参数为NULL或缓冲区未初始化）
+  * @author     : 周大侠
  *******************************************************/
-int releaseRingbuffer(ScmRingBuff* pRing)
+int Ring_release(ScmRingBuff *pRing)
 {
-    int  result = -1;
- 
-    if(NULL != pRing  && NULL != pRing->pHead)
+    int result = -1;
+
+    if (NULL != pRing && NULL != pRing->pHead)
     {
-        //xSemaphoreTake( pRing->clock, portMAX_DELAY ); 
+        // xSemaphoreTake( pRing->clock, portMAX_DELAY );
         free(pRing->pHead);
-        //xSemaphoreGive( pRing->clock ); 
-        memset((char*)pRing,00,sizeof(ScmRingBuff));
+        // xSemaphoreGive( pRing->clock );
+        memset((char *)pRing, 00, sizeof(ScmRingBuff));
         result = 0;
     }
     return result;
 }
 
 #endif
-
 
 #ifdef ZDX_MEMORY
 
@@ -627,19 +623,19 @@ int releaseRingbuffer(ScmRingBuff* pRing)
                 其它：得到的地址
   * @author     : 周大侠     2021-3-13 11:28:07
  *******************************************************/
-void* aligned_malloc(size_t required_bytes, size_t alignment)
+void *aligned_malloc(size_t required_bytes, size_t alignment)
 {
-    void* res = NULL;
-    size_t offset = alignment - 1 + sizeof(void*);//需要增加调整空间和存放实际地址的空间
-    void* p = (void*)malloc(required_bytes+offset);// p 为实际malloc的地址
+    void *res = NULL;
+    size_t offset = alignment - 1 + sizeof(void *);    // 需要增加调整空间和存放实际地址的空间
+    void *p = (void *)malloc(required_bytes + offset); // p 为实际malloc的地址
 
     if (NULL != p)
     {
-        res = (void*)(((size_t  )(p)+offset)&~(alignment-1));//a &~(b-1) 可以理解为b在a范围中的最大整数倍的值    ，b必须为2的n次方，如：100&~(8-1) = 96
-        void** tmp = (void**)res;//tmp是一个存放指针数据的地址
-        tmp[-1] = p;//地址的前一个位置存放指针p
+        res = (void *)(((size_t)(p) + offset) & ~(alignment - 1)); // a &~(b-1) 可以理解为b在a范围中的最大整数倍的值    ，b必须为2的n次方，如：100&~(8-1) = 96
+        void **tmp = (void **)res;                                 // tmp是一个存放指针数据的地址
+        tmp[-1] = p;                                               // 地址的前一个位置存放指针p
     }
-    
+
     return res;
 }
 
@@ -650,18 +646,44 @@ void* aligned_malloc(size_t required_bytes, size_t alignment)
   * @Returns    ：
   * @author     : 周大侠     2021-3-13 11:28:07
  *******************************************************/
-void aligned_free(void* r)
+void aligned_free(void *r)
 {
     if (r != NULL)
     {
-        void** tmp = (void**)r;
+        void **tmp = (void **)r;
         free(tmp[-1]);
     }
 }
 
 #endif
 
-#ifdef TIME_CONVERSION
+#ifdef TIME_CONVERSION // 时间转换
+#define RTC_BEI_JING_UTC_DIFF_SEC (8 * 60 * 60) // 北京时间和UTC时间的秒数差
+
+/********************************************************
+    * @Description：计算星期
+    * @Arguments  ：
+                    uYear[IN] 年份
+                    month[IN] 月份 (1-12)
+                    day[IN]   日期 (1-31)
+    * @Returns    ：
+                    1-7：星期值
+    * @author     : 周大侠     2026-04-29 00:00:00
+ *******************************************************/
+uint8_t Time_getWeek(uint16_t uYear, uint8_t month, uint8_t day)
+{
+    uint8_t week;
+
+    if (3 > month)
+    {
+        month += 12;
+        uYear--;
+    }
+    week = (day + 2 * month + 3 * (month + 1) / 5 + uYear + uYear / 4 - uYear / 100 + uYear / 400) % 7;
+    week += 1;
+
+    return week;
+}
 
 /********************************************************
   * @Description：闰年判断
@@ -669,124 +691,119 @@ void aligned_free(void* r)
                 year[IN] 判断的年份
   * @Returns    ：
                 0：平年
-                1： 闰年 
+                1： 闰年
   * @author     : 周大侠     2022-8-1 20:19:29
  *******************************************************/
-static uint8_t Time_checkLeapYear(uint16_t uYear)
+uint8_t Time_checkLeapYear(uint16_t uYear)
 {
     return (((uYear) % 4) == 0 && (((uYear) % 100) != 0 || ((uYear) % 400) == 0));
 }
 
 /********************************************************
-  * @Description：时间格式转化成时间戳
+  * @Description：北京时间格式转化成时间戳
   * @Arguments  ：
                 pStrTime[IN] 时间结构体
   * @Returns    ：
                 从1970年起的时间戳
-  * @author     : 周大侠     2022-8-1 20:19:29
+  * @author     : 周大侠     2026-04-06 21:49:39
  *******************************************************/
-uint32_t Time_strTimeToUtime(TimeStruct* pStrTime)
+uint32_t Time_strTimeToUtime(TimeStruct *pStrTime)
 {
-    const uint16_t mon_yday[2][12] = 
-    {
-        {0,31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
-        {0,31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335},
-    };
+    const uint16_t mon_yday[2][12] =
+        {
+            {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
+            {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335},
+        };
     uint32_t ret;
     int i = 0;
 
-    if(NULL == pStrTime || 0 == pStrTime->day ||
-        0 == pStrTime->month || 12 < pStrTime->month || 1970 > pStrTime->year )
+    if (NULL == pStrTime || 0 == pStrTime->day ||
+        0 == pStrTime->month || 12 < pStrTime->month || 1970 > pStrTime->year)
     {
         return 0;
     }
-    
-    // 以平年时间计算的秒数
+
     ret = (pStrTime->year - 1970) * 365 * 24 * 3600;
     ret += (mon_yday[Time_checkLeapYear(pStrTime->year)][pStrTime->month - 1] + pStrTime->day - 1) * 24 * 3600;
-    ret += pStrTime->hour * 3600 + pStrTime->minte * 60 + pStrTime->second;
-    // 加上闰年的秒数
-    for(i = 1970; i < pStrTime->year; i++)
+    ret += pStrTime->hour * 3600 + pStrTime->minute * 60 + pStrTime->second;
+    for (i = 1970; i < pStrTime->year; i++)
     {
-        if(Time_checkLeapYear(i))
+        if (Time_checkLeapYear(i))
         {
             ret += 24 * 3600;
         }
     }
-    if(ret > 4107715199U)//2100-02-29 23:59:59
-    { 
+    if (ret > 4107715199U) // 2100-02-29 23:59:59
+    {
         ret += 24 * 3600;
     }
-    return(ret);
+
+    if (ret > RTC_BEI_JING_UTC_DIFF_SEC)
+    {
+        ret -= RTC_BEI_JING_UTC_DIFF_SEC;
+    }
+
+    return (ret);
 }
 
 /********************************************************
-  * @Description：时间戳转换成时间格式结构体
+  * @Description：UTC时间戳转换成北京时间格式结构体
   * @Arguments  ：
-                uTime[IN] 时间戳
-                pStrTime[OUT] 输出的时间结构体指针
+                uTime[IN] UTC时间戳
+                pStrTime[OUT] 输出的时间结构体指针-北京时间
   * @Returns    ：
                 NULL
   * @author     : 周大侠     2022-8-1 20:19:29
  *******************************************************/
-void Time_uTimeToStrTime(uint32_t uTime, TimeStruct* pStrTime)
+void Time_uTimeToStrTime(uint32_t uTime, TimeStruct *pStrTime)
 {
     const char Days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-
-    uint32_t Pass4year;
+    uint32_t pass4year;
     int hours_per_year;
 
-    pStrTime->msec = 0;
-    //取秒时间
-    pStrTime->second=(int)(uTime % 60);
-    uTime /= 60;
-    //取分钟时间
-    pStrTime->minte=(int)(uTime % 60);
-    uTime /= 60;
-    //取过去多少个四年，每四年有 1461*24 小时
-    Pass4year = uTime / (1461L * 24L);
-    //计算年份
-    pStrTime->year=(Pass4year << 2) + 1970;
-    //四年中剩下的小时数
-    uTime %= 1461L * 24L;
-    //校正闰年影响的年份，计算一年中剩下的小时数
-    while(1)
-    {
-        //一年的小时数
-        hours_per_year = 365 * 24;
-        //判断闰年，是闰年，一年则多24小时，即一天
-        if ((pStrTime->year & 3) == 0) hours_per_year += 24;
+    uTime += RTC_BEI_JING_UTC_DIFF_SEC;
 
-        if (uTime < hours_per_year) break;
+    pStrTime->msec = 0;
+    pStrTime->second = (int)(uTime % 60);
+    uTime /= 60;
+    pStrTime->minute = (int)(uTime % 60);
+    uTime /= 60;
+    pass4year = uTime / (1461L * 24L);
+    pStrTime->year = (pass4year << 2) + 1970;
+    uTime %= 1461L * 24L;
+    while (1)
+    {
+        hours_per_year = 365 * 24;
+        if (1 == Time_checkLeapYear(pStrTime->year))
+            hours_per_year += 24;
+
+        if (uTime < hours_per_year)
+            break;
 
         pStrTime->year++;
         uTime -= hours_per_year;
     }
-    //小时数
-    pStrTime->hour=(int)(uTime % 24);
-    //一年中剩下的天数
+    pStrTime->hour = (int)(uTime % 24);
     uTime /= 24;
-    //假定为闰年
     uTime++;
-    //校正闰年的误差，计算月份，日期
-    if((pStrTime->year & 3) == 0)
+    if (1 == Time_checkLeapYear(pStrTime->year))
     {
-        if (uTime > 60) 
+        if (uTime > 60)
         {
             uTime--;
-        } 
-        else 
+        }
+        else
         {
-            if (uTime == 60) 
+            if (uTime == 60)
             {
                 pStrTime->month = 2;
                 pStrTime->day = 29;
-                return ;
+                return;
             }
         }
     }
-    //计算月日
-    for (pStrTime->month = 1; Days[pStrTime->month - 1] < uTime;pStrTime->month++)
+
+    for (pStrTime->month = 1; Days[pStrTime->month - 1] < uTime; pStrTime->month++)
     {
         uTime -= Days[pStrTime->month - 1];
     }
@@ -803,50 +820,55 @@ void Time_uTimeToStrTime(uint32_t uTime, TimeStruct* pStrTime)
                 month[IN] 月
                 day[IN]   日
                 hour[IN]  时
-                minte[IN] 分
+                minute[IN] 分
                 second[IN]秒
   * @Returns    ：
                 0 :合法
                 其它：非法
-  * @author     : 周大侠     2022-8-1 20:19:29
+  * @author     : 周大侠     2026-04-06 21:47:17
  *******************************************************/
-int Time_checkFormatIsLegal(uint16_t year, uint8_t month, uint8_t day, 
-                                  uint8_t hour, uint8_t minte, uint8_t second)
+int Time_checkFormatIsLegal(uint16_t year, uint8_t month, uint8_t day,
+                            uint8_t hour, uint8_t minute, uint8_t second)
 {
-    if ((year < 1970) || (year > 2100) || (month == 0) || (month > 12) || 
-    (day == 0) || (hour > 24) || (minte > 59) || (second > 59)) //数值非法
+    if ((year < 1970) || (year > 2100) || (month == 0) || (month > 12) ||
+        (day == 0) || (hour >= 24) || (minute > 59) || (second > 59)) // 数值非法
     {
         return -1;
     }
 
-    switch (month)  //日数是否超限
+    switch (month)
     {
-        case 1:
-        case 3:
-        case 5:
-        case 7:
-        case 8:
-        case 10:
-        case 12:    if (day > 31) return 0;break;   //一个月31天
-        case 4:
-        case 6:
-        case 9:
-        case 11:    if (day > 30) return 0;break;   //一个月30天
-        case 2:
-            if (((year % 4) == 0 && (year % 100) != 0) || ((year % 400) == 0))  //是否是闰年
-            {
-                if (day > 29)	//闰年2月29天
-                    return -1;
-                break;
-            }
-            else
-            {
-                if (day > 28)	//非闰年2月28天
-                    return -1;
-                break;
-            }
+    case 1:
+    case 3:
+    case 5:
+    case 7:
+    case 8:
+    case 10:
+    case 12:
+        if (day > 31)
+            return -1;
+        break;
+    case 4:
+    case 6:
+    case 9:
+    case 11:
+        if (day > 30)
+            return -1;
+        break;
+    case 2:
+        if (((year % 4) == 0 && (year % 100) != 0) || ((year % 400) == 0))
+        {
+            if (day > 29)
+                return -1;
+            break;
+        }
+        else
+        {
+            if (day > 28)
+                return -1;
+            break;
+        }
     }
     return 0;
 }
-
 #endif

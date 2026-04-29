@@ -1,141 +1,177 @@
 # Zdx_Library
-裸机环境上实用的库
 
- 目录
+裸机（无 RTOS）环境下常用的工具库，包含任务调度、队列、环形缓存、内存管理和时间转换五个模块，按需通过宏开关启用。
 
-1. TASK 任务调度
+---
 
-2. QUEUE 队列管理 
+## 目录
 
-3. RING_REDIS 环形缓存
+1. [TASK — 任务调度](#1-task--任务调度)
+2. [QUEUE — 队列管理](#2-queue--队列管理)
+3. [RING — 环形缓存](#3-ring--环形缓存)
+4. [MEMORY — 内存管理](#4-memory--内存管理)
+5. [TIME — 时间转换](#5-time--时间转换)
 
-4. MEMORY 内存管理
+---
 
-5. TIME 时间转换
+## 1. TASK — 任务调度
 
-## 1. TASK 任务调度：#define ZDX_TASK   ##
+> 启用：`#define ZDX_TASK`
 
-无RTOS(裸机环境)下实现分时调度法，非常适用于单片机环境下的一般应用场景
+在裸机大循环中实现轻量级分时调度，无需移植 RTOS，适合逻辑简单、对实时性要求不严格的场景。
 
-RTOS优点不用多说了，但对于一些简单的业务需求，移植一个操作系统又显得非常麻烦，且非常占用系统资源。
+**工作原理：** 1 ms 定时器中断调用 `Task_reckonTime()` 累计计数，主循环调用 `Task_scheduling()` 轮询执行到期任务。
 
-通常的做法是在一个大while下执行各个业务函数，通过多个定时器去控制各个函数的执行周期，利用几个全局变量关联各个模块功能。
+**管理模式（修改 `TASK_MODE_SELECT` 切换）：**
 
-但这样的做法在多轮开发下，会造成 代码非常臃肿，模块关系混乱，不利于阅读。
+| 模式 | 宏值 | 特点 |
+|------|------|------|
+| 链表（推荐） | `TASK_MODE_LINKED` | 任务数量不限 |
+| 数组 | `TASK_MODE_ARRAY` | 任务数量由 `TASK_AMOUNT_MAX`（默认 20）决定 |
 
-为了解决这个问题，手动码了一个简单的多任务调度，封装成接口供大家使用！
+**接口：**
 
-实现方式：创建任务时，设定好任务的调度周期和任务函数，通过定时器来计算任务是否达到执行周期，在主循环上执行任务函数。
+| 函数 | 说明 |
+|------|------|
+| `Task_create(handle, name, func, par, period)` | 创建任务，`period` 单位 ms |
+| `Task_cancel(handle)` | 删除任务，传 NULL 删除当前任务 |
+| `Task_reckonTime()` | 放在 1 ms 定时器中断中调用 |
+| `Task_scheduling()` | 放在主循环中调用 |
 
-**优点：** 
+**示例：**
 
-1、占用代码量超小
-
-2、移植超简单
-
-3、程序架构清晰、模块化
-
-**管理方式：**
-
-1、链表形式(推荐)，任务数量无限，通过修改宏TASK_MODE_SELECT为TASK_MODE_LINKED进行条件编译
-
-2、数组形式，任务数量由宏定义TASK_AMOUNT_MAX决定，通过修改宏TASK_MODE_SELECT为TASK_MODE_ARRAY进行条件编译
-
-**接口说明:**
-
-1、Task_create 创建一个任务，需要传入任务函数指针和执行周期
-
-2、Task_cancel 取消一个任务
-
-3、Task_reckon_time 任务计数，通常放在1mS的定时器中断中执行
-
-4、Task_scheduling 任务调度，主函数上循环调用即可
-
-
-例：
 ```c
-//任务句柄变量
-task_t gTestHandle,gLedHandle,gRtcHandle;
+task_t gTestHandle, gLedHandle, gRtcHandle;
 
 void main(void)
 {
-    Drive_init();//时钟、外设、IO 初始化
-    Time_init();//设定1mS中断一次的定时器
+    Drive_init();   // 时钟、外设、IO 初始化
+    Timer_init();   // 配置 1 ms 定时器
 
-    Task_create(&gTestHandle,"test_task_1",Task_1_fun,NULL,5);//创建一个Task_1_fun 任务 5mS执行一次
-    Task_create(&gLedHandle,"test_led",Led_fun,NULL,100);//创建一个Led_fun 任务 100mS执行一次
-    Task_create(&gRtcHandle,"test_RTC",RTC_fun,NULL,1000);//创建RTC_fun 任务 1000mS执行一次
+    Task_create(&gTestHandle, "task1",  Task_1_fun, NULL,  5);   //  5 ms 执行一次
+    Task_create(&gLedHandle,  "led",    Led_fun,    NULL,  100);  // 100 ms 执行一次
+    Task_create(&gRtcHandle,  "rtc",    RTC_fun,    NULL,  1000); //  1  s 执行一次
 
-    start_time();//启动定时器
-    
-    while(1)
+    Timer_start();
+
+    while (1)
     {
-        Task_scheduling(); //死循环，任务调度
+        Task_scheduling();
     }
 }
 
-//定时器中断回调函数 1mS一次中断 
-void CallBack_time_it(void)
+// 1 ms 定时器中断回调
+void Timer_IRQHandler(void)
 {
-    Task_reckon_time();//任务周期计算
+    Task_reckonTime();
 }
 ```
 
+---
 
+## 2. QUEUE — 队列管理
 
+> 启用：`#define ZDX_QUEUE`
 
-## 2. QUEUE  队列管理：#define ZDX_QUEUE    ##
+固定大小的先进先出队列，适合模块间消息传递。
 
-使用方法：根据业务场景，修改宏定义QUEUE_DATA_LEN_MAX和QUEUE_AMOUNT_MAX ，创建静态或动态的队列缓存。
+**容量配置（在 `Zdx_Library.h` 中修改）：**
 
-**接口说明：**
+| 宏 | 默认值 | 说明 |
+|----|--------|------|
+| `QUEUE_DATA_LEN_MAX` | 128 B | 单条数据最大长度 |
+| `QUEUE_AMOUNT_MAX` | 32 | 队列最大条目数 |
 
- Queue_init：队列初始化
+**接口：**
 
- Queue_add：入队
+| 函数 | 说明 |
+|------|------|
+| `Queue_init(q)` | 初始化队列 |
+| `Queue_add(q, data, size)` | 入队 |
+| `Queue_del(q)` | 出队（移除队头） |
+| `Queue_get(q, &pData)` | 读取队头数据指针，不出队，返回数据长度 |
 
- Queue_del：出队
+---
 
- Queue_get：读取队列头数据
+## 3. RING — 环形缓存
 
+> 启用：`#define ZDX_RING_REDIS`
 
+动态分配的环形缓冲区。缓冲区写满时自动覆盖最旧数据，始终保留最新数据。
 
+**接口：**
 
-## 3. RING_REDIS  环形缓存：#define ZDX_RING_REDIS    ##
+| 函数 | 说明 |
+|------|------|
+| `Ring_init(ring, size)` | 初始化，`size` 为字节数（内部 malloc） |
+| `Ring_write(ring, buf, len)` | 写入数据，`len > size` 时返回 -2 |
+| `Ring_read(ring, buf, len)` | 读出数据，读后数据被消耗，返回实际读取字节数 |
+| `Ring_release(ring)` | 释放缓冲区内存 |
 
+**示例：**
 
-一、环形缓冲区的特性
+```c
+ScmRingBuff ring = {0};
 
-1、先进先出        
-2、当缓冲区被使用完，且又有新的数据需要存储时，丢掉历史最久的数据，保存最新数据
-现实中的存储介质都是线性的，因此我们需要做一下处理，才能在功能上实现环形缓冲区
-![](https://img-blog.csdn.net/20180823161741219?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L21hb3dlbnRhbzA0MTY=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)
+Ring_init(&ring, 256);           // 分配 256 字节缓冲区
 
+Ring_write(&ring, txBuf, 10);    // 写入 10 字节
+Ring_read(&ring, rxBuf, 10);     // 读出 10 字节
 
-![](https://img-blog.csdn.net/20180823161009879?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L21hb3dlbnRhbzA0MTY=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)
+Ring_release(&ring);             // 释放
+```
 
+---
 
+## 4. MEMORY — 内存管理
 
+> 启用：`#define ZDX_MEMORY`
 
-## 4. MEMORY  内存管理：#define ZDX_MEMORY    ##
+支持字节对齐的 `malloc` / `free`，`alignment` 必须是 2 的幂（如 4、8、16）。
 
-编写支持对其分配的malloc和free函数，分配内存时，malloc函数返回的地址必须能被2的n次方整除。
+**接口：**
 
+| 函数 | 说明 |
+|------|------|
+| `aligned_malloc(size, alignment)` | 分配 `size` 字节，返回地址按 `alignment` 对齐 |
+| `aligned_free(ptr)` | 释放 `aligned_malloc` 分配的内存 |
 
-void* aligned_malloc(size_t required_bytes, size_t alignment)    
-void aligned_free(void* r)
+**示例：**
 
-内存模型：
-![](https://img-blog.csdnimg.cn/202103131542419.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM3ODMwNzU3,size_16,color_FFFFFF,t_70)
+```c
+void *p = aligned_malloc(100, 8); // 分配 100 字节，8 字节对齐
+// 使用 p ...
+aligned_free(p);
+```
 
+---
 
+## 5. TIME — 时间转换
 
-## 5. TIME  时间转换：#define TIME_CONVERSION    ##
+> 启用：`#define TIME_CONVERSION`
 
-**接口说明：**
+北京时间（UTC+8）与 Unix 时间戳互转，支持范围 1970～2100 年。
 
-1.Time_strTimeToUtime   时间格式转化成时间戳
+时间结构体 `TimeStruct`：
 
-2.Time_uTimeToStrTime  时间戳转换成时间格式结构体
+```c
+typedef struct {
+    uint16_t year;   // [1970, 2100]
+    uint8_t  month;  // [1, 12]
+    uint8_t  day;    // [1, 31]
+    uint8_t  hour;   // [0, 23]
+    uint8_t  minute; // [0, 59]
+    uint8_t  second; // [0, 59]
+    uint16_t msec;   // [0, 999]
+} TimeStruct;
+```
 
-3.Time_checkFormatIsLegal 判断时间是否合法
+**接口：**
+
+| 函数 | 说明 |
+|------|------|
+| `Time_getWeek(year, month, day)` | 返回星期值 1～7（1=周一） |
+| `Time_checkLeapYear(year)` | 闰年判断，1=闰年，0=平年 |
+| `Time_strTimeToUtime(pTime)` | 北京时间结构体 → Unix 时间戳 |
+| `Time_uTimeToStrTime(utime, pTime)` | Unix 时间戳 → 北京时间结构体 |
+| `Time_checkFormatIsLegal(y,mo,d,h,mi,s)` | 时间合法性校验，0=合法 |
